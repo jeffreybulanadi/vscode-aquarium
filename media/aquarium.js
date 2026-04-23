@@ -11,6 +11,7 @@
   let fish = [];
   const bubbles = [];
   const plants = [];
+  const grassClusters = [];
   const pellets = [];
   let lastTime = performance.now();
 
@@ -69,12 +70,7 @@
     if (keys.length === 0) { return Promise.resolve(); }
     return Promise.all(keys.map(key => new Promise(resolve => {
       const img = new Image();
-      img.onload = () => {
-        SPRITES[key] = key === 'underwatergrass'
-          ? removeColorBackground(img)
-          : removeWhiteBackground(img);
-        resolve();
-      };
+      img.onload = () => { SPRITES[key] = removeWhiteBackground(img); resolve(); };
       img.onerror = resolve;
       img.src = assets[key];
     })));
@@ -130,14 +126,14 @@
   // Y zone fractions (fraction of canvas height) — controls vertical swim territory
   const SPECIES_ZONE = {
     alligatorgar: { yMin: 0.05, yMax: 0.40 },
-    arowana:      { yMin: 0.03, yMax: 0.10 },
+    arowana:      { yMin: 0.05, yMax: 0.12 },
     snakehead:    { yMin: 0.08, yMax: 0.52 },
     peacockbass:  { yMin: 0.15, yMax: 0.75 },
     oscar:        { yMin: 0.15, yMax: 0.75 },
     rtcatfish:    { yMin: 0.20, yMax: 0.82 },
     flowerhorn:   { yMin: 0.18, yMax: 0.78 },
     axolotl:      { yMin: 0.55, yMax: 0.92 },
-    pleco:        { yMin: 0.62, yMax: 0.95 },
+    pleco:        { yMin: 0.90, yMax: 0.97 },
   };
 
   // Base swim speeds (px/s)
@@ -156,6 +152,7 @@
     canvas.height = Math.floor(H * DPR);
     ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
     seedPlants();
+    seedGrass();
     fish.forEach(clampFish);
   }
   window.addEventListener('resize', resize);
@@ -171,6 +168,24 @@
         sway: Math.random() * Math.PI * 2,
         color: `hsl(${100 + Math.random() * 40}, 60%, ${25 + Math.random() * 15}%)`,
         blades: 4 + Math.floor(Math.random() * 4)
+      });
+    }
+  }
+
+  function seedGrass() {
+    grassClusters.length = 0;
+    const sprite = SPRITES.grass1;
+    if (!sprite || W === 0) return;
+    const count = Math.max(3, Math.floor(W / 170));
+    const aspect = sprite.height / sprite.width;
+    for (let i = 0; i < count; i++) {
+      const scale = 0.8 + Math.random() * 0.5;
+      const clusterW = (140 + Math.random() * 60) * scale;
+      grassClusters.push({
+        x: (i + 0.25 + Math.random() * 0.5) * (W / count),
+        w: clusterW,
+        h: clusterW * aspect,
+        phase: Math.random() * Math.PI * 2,
       });
     }
   }
@@ -309,6 +324,7 @@
       f.vx += (desiredVx - f.vx) * Math.min(1, dt * 2);
       f.vy += (desiredVy - f.vy) * Math.min(1, dt * 2);
       if (f.species === 'arowana') f.vy *= 0.72;  // keep arowana gliding horizontally
+      if (f.species === 'pleco')   f.vy *= 0.30;  // pleco hugs the bottom
       f.x += f.vx * dt;
       f.y += f.vy * dt;
 
@@ -345,7 +361,7 @@
     }
     ctx.restore();
 
-    if (!SPRITES.underwatergrass) {
+    if (!SPRITES.grass1) {
       const gravelH = 28;
       ctx.fillStyle = aquariumType === 'saltwater' ? '#c8b884' : '#3a2a1a';
       ctx.fillRect(0, H - gravelH, W, gravelH);
@@ -377,17 +393,18 @@
     }
   }
 
-  // Draws background-clipped underwater grass sprite; falls back to canvas plants
+  // Draws grass1 sprite clusters at the bottom; falls back to canvas plants
   function drawUnderwaterGrass(t) {
-    const sprite = SPRITES.underwatergrass;
+    const sprite = SPRITES.grass1;
     if (!sprite) { drawPlants(t); return; }
-    const grassH = Math.round(H * 0.34);
-    const grassY = H - grassH;
-    const sway = Math.sin(t * 1.4) * 5;
-    ctx.save();
-    ctx.translate(sway, 0);
-    ctx.drawImage(sprite, -Math.abs(sway), grassY, W + Math.abs(sway) * 2, grassH);
-    ctx.restore();
+    if (grassClusters.length === 0) seedGrass();
+    for (const gc of grassClusters) {
+      const sway = Math.sin(t * 1.3 + gc.phase) * 5;
+      ctx.save();
+      ctx.translate(gc.x + sway, H - gc.h);
+      ctx.drawImage(sprite, -gc.w / 2, 0, gc.w, gc.h);
+      ctx.restore();
+    }
   }
 
   function drawBubbles() {
@@ -432,8 +449,8 @@
     const phase = f.tailPhase;
     const dir = f.vx >= 0 ? 1 : -1;
 
-    // Scale sprite to ~65px tall, preserving aspect ratio
-    const targetH = 65;
+    // Scale sprite to ~80px tall, preserving aspect ratio
+    const targetH = 80;
     const targetW = (sprite.width / sprite.height) * targetH;
 
     // Tail occupies rightmost 22% of the original image

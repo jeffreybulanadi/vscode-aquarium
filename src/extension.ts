@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
 
-const FRESHWATER_SPECIES = ['arowana', 'oscar', 'snakehead', 'peacockbass', 'axolotl', 'alligatorgar', 'rtcatfish', 'pleco', 'flowerhorn', 'goldfish', 'guppy', 'angelfish', 'betta'];
+const FRESHWATER_SPECIES = ['arowana', 'oscar', 'snakehead', 'peacockbass', 'axolotl', 'alligatorgar', 'rtcatfish', 'pleco', 'flowerhorn'];
 const SALTWATER_SPECIES = ['clownfish', 'tang', 'lionfish', 'angel-marine', 'pufferfish'];
 
 const SPECIES_LABELS: Record<string, string> = {
@@ -163,7 +163,7 @@ function getHtml(context: vscode.ExtensionContext, webview: vscode.Webview): str
     vscode.Uri.file(path.join(context.extensionPath, 'media', 'flower-horn.jpg'))
   );
   const underwaterGrassUri = webview.asWebviewUri(
-    vscode.Uri.file(path.join(context.extensionPath, 'media', 'underwater-grass.jpg'))
+    vscode.Uri.file(path.join(context.extensionPath, 'media', 'grass 1.jpg'))
   );
   const csp = `default-src 'none'; img-src ${webview.cspSource} data:; style-src ${webview.cspSource} 'unsafe-inline'; script-src 'nonce-${nonce}';`;
   html = html
