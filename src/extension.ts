@@ -144,7 +144,7 @@ function getHtml(context: vscode.ExtensionContext, webview: vscode.Webview): str
     vscode.Uri.file(path.join(context.extensionPath, 'media', 'aquarium.css'))
   );
   const arowanaUri = webview.asWebviewUri(
-    vscode.Uri.file(path.join(context.extensionPath, 'media', 'arowana.png'))
+    vscode.Uri.file(path.join(context.extensionPath, 'media', 'arowana2.jpg'))
   );
   const oscarUri = webview.asWebviewUri(
     vscode.Uri.file(path.join(context.extensionPath, 'media', 'oscar.jpg'))
