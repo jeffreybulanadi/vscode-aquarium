@@ -143,6 +143,13 @@
     rtcatfish: 14, pleco: 6,
   };
 
+  // Mid-body undulation amplitude (radians) — higher = more flexible body wave
+  const SPECIES_MID_AMP = {
+    arowana: 0.09, snakehead: 0.10, peacockbass: 0.08,
+    alligatorgar: 0.04, oscar: 0.07, flowerhorn: 0.07,
+    rtcatfish: 0.08, pleco: 0.03,
+  };
+
   // Hunger decay rate (units/sec). Fish hunger 0→100 over time;
   // rates set so fish survive ~2-3 hrs without feeding before dying.
   const HUNGER_DECAY = {
@@ -248,12 +255,13 @@
     const zone = SPECIES_ZONE[species] || { yMin: 0.10, yMax: 0.85 };
     const spd  = SPECIES_SPEED[species] || 25;
     const yPos = H * (zone.yMin + Math.random() * (zone.yMax - zone.yMin));
+    const dir0 = Math.random() < 0.5 ? -1 : 1;   // initial swim direction
     return {
       species,
       visualParams: buildVisualParams(species, colorVariantId),
       x: Math.random() * W,
       y: yPos,
-      vx: (Math.random() < 0.5 ? -1 : 1) * (spd * 0.6 + Math.random() * spd * 0.4),
+      vx: dir0 * (spd * 0.6 + Math.random() * spd * 0.4),
       vy: (Math.random() - 0.5) * 8,
       targetY: yPos,
       changeIn: 1 + Math.random() * 3,
@@ -264,6 +272,7 @@
       growthScale: 1.0,  // grows with feeding, max 1.5
       dead: false,
       deathTimer: 0,
+      renderDir: dir0,   // smooth direction — lerps when fish turns
     };
   }
 
@@ -424,6 +433,10 @@
       if (f.x > W - margin) { f.x = W - margin; f.vx = -Math.abs(f.vx); }
       if (f.y < yMin) { f.y = yMin; f.vy = 0; f.targetY = yMin + (yMax - yMin) * (0.2 + Math.random() * 0.5); }
       if (f.y > yMax) { f.y = yMax; f.vy = 0; f.targetY = yMin + (yMax - yMin) * (0.2 + Math.random() * 0.5); }
+
+      // Smoothly lerp renderDir toward actual swim direction — produces a natural squish-turn
+      const wantDir = f.vx > 0 ? 1 : f.vx < 0 ? -1 : (f.renderDir >= 0 ? 1 : -1);
+      f.renderDir += (wantDir - f.renderDir) * Math.min(1, dt * 10);
     }
   }
 
@@ -722,7 +735,7 @@
   // Used before sprite loads. Sprite path handled via SPRITE_SPECIES.
   function drawArowanaCanvas(f) {
     const phase = f.tailPhase;
-    const dir = f.vx >= 0 ? 1 : -1;
+    const dir = f.renderDir || 1;
     const L = 145, Hh = 17;       // very elongated — 8:1 ratio
     const wag = Math.sin(phase) * 0.3;
 
@@ -889,7 +902,7 @@
   // large cichlid mouth, ocellus spot near tail.
   function drawOscar(f) {
     const phase = f.tailPhase;
-    const dir = f.vx >= 0 ? 1 : -1;
+    const dir = f.renderDir || 1;
     const { patches } = f.visualParams;
     const L = 65, Bh = 52;
     const wag = Math.sin(phase) * 0.22;
@@ -1050,7 +1063,7 @@
   function drawGeneric(f) {
     const d = SPECIES_DEF[f.species] || SPECIES_DEF.goldfish;
     const phase = f.tailPhase;
-    const dir = f.vx >= 0 ? 1 : -1;
+    const dir = f.renderDir || 1;
     const L = d.len, Hh = d.height;
     const wag = Math.sin(phase) * 0.28;
 
@@ -1107,8 +1120,8 @@
   }
 
   // ===================== GENERIC SPRITE FISH =====================
-  // Handles any species in SPRITE_SPECIES: crops from sheet, applies color filter,
-  // splits into body + tail with wag animation.
+  // 3-section rendering: front body (rigid) → mid-posterior (subtle wave) → tail (full wag).
+  // Mid and tail use hierarchical transforms so section boundaries are seamless.
   function drawSpriteSheetFish(f) {
     const def = SPRITE_SPECIES[f.species];
     if (!def) return;
@@ -1116,67 +1129,110 @@
     if (!sprite) return;
 
     const phase = f.tailPhase;
-    const dir   = f.vx >= 0 ? 1 : -1;
     const { targetH, tailRatio, facesLeft } = def;
 
-    // Pixel crop from the source sheet
     const sx = def.fx * sprite.width,  sy = def.fy * sprite.height;
     const sw = def.fw * sprite.width,  sh = def.fh * sprite.height;
 
-    // Derive targetW from real sprite aspect ratio — preserves proportions correctly
-    const targetW = targetH * (sw / sh);
-    const tailW   = targetW * tailRatio;
-    const OVERLAP = Math.max(5, Math.round(targetH * 0.06));
+    const targetW  = targetH * (sw / sh);
+    const tailW    = targetW * tailRatio;
+    const midW     = targetW * 0.24;     // posterior body section (24% of width)
+    const OVERLAP  = Math.max(5, Math.round(targetH * 0.06));
+
+    // Per-species body flexibility; phase offset creates traveling S-wave head→tail
+    const midAmp   = SPECIES_MID_AMP[f.species] || 0.07;
+    const midAngle = Math.sin(phase - Math.PI / 5) * midAmp;
+    const tailAngle = Math.sin(phase) * 0.22;
+
+    const gs = f.growthScale || 1.0;
+    // renderDir is a float [-1,1] — near 0 produces a natural squish as the fish turns
+    const scaleX = (facesLeft ? -1 : 1) * (f.renderDir || 1) * gs;
 
     ctx.save();
     ctx.translate(f.x, f.y + Math.sin(phase * 0.7) * 1.5);
     if (f.visualParams && f.visualParams.colorFilter) { ctx.filter = f.visualParams.colorFilter; }
-    // facesLeft → original image has head-LEFT → scale(-dir) to swim correctly
-    // growthScale applied here so body and tail both scale proportionally
-    const gs = f.growthScale || 1.0;
-    ctx.scale((facesLeft ? -dir : dir) * gs, gs);
+    ctx.scale(scaleX, gs);
     ctx.rotate(Math.atan2(f.vy, Math.abs(f.vx) + 0.01) * 0.2);
 
     if (facesLeft) {
-      // Tail is at the RIGHT of the image (x = +targetW/2)
-      const pivotX = targetW / 2 - tailW;
-      // Body
+      // Head at -targetW/2 (left), tail at +targetW/2 (right)
+      const pivotTail = targetW / 2 - tailW;
+      const pivotMid  = targetW / 2 - tailW - midW;
+
+      // 1. Front body / head — no rotation
       ctx.save();
       ctx.beginPath();
-      ctx.rect(-targetW / 2, -targetH / 2 - 4, targetW - tailW + OVERLAP, targetH + 8);
+      ctx.rect(-targetW / 2, -targetH / 2 - 4, targetW - tailW - midW + OVERLAP, targetH + 8);
       ctx.clip();
       ctx.drawImage(sprite, sx, sy, sw, sh, -targetW / 2, -targetH / 2, targetW, targetH);
       ctx.restore();
-      // Tail (wag around pivot)
+
+      // 2. Mid + Tail — mid rotation applied first; tail nested within it for seamless joint
       ctx.save();
-      ctx.translate(pivotX, 0);
-      ctx.rotate(Math.sin(phase) * 0.22);
-      ctx.translate(-pivotX, 0);
+      ctx.translate(pivotMid, 0);
+      ctx.rotate(midAngle);
+      ctx.translate(-pivotMid, 0);
+
+      // 2a. Mid body (posterior wave)
+      ctx.save();
       ctx.beginPath();
-      ctx.rect(pivotX - OVERLAP, -targetH / 2 - 4, tailW + OVERLAP, targetH + 8);
+      ctx.rect(pivotMid - OVERLAP, -targetH / 2 - 4, midW + 2 * OVERLAP, targetH + 8);
       ctx.clip();
       ctx.drawImage(sprite, sx, sy, sw, sh, -targetW / 2, -targetH / 2, targetW, targetH);
       ctx.restore();
+
+      // 2b. Tail — nested in mid's rotated frame; pivot is at tail-root inside that frame
+      ctx.save();
+      ctx.translate(pivotTail, 0);
+      ctx.rotate(tailAngle);
+      ctx.translate(-pivotTail, 0);
+      ctx.beginPath();
+      ctx.rect(pivotTail - OVERLAP, -targetH / 2 - 4, tailW + OVERLAP, targetH + 8);
+      ctx.clip();
+      ctx.drawImage(sprite, sx, sy, sw, sh, -targetW / 2, -targetH / 2, targetW, targetH);
+      ctx.restore();
+
+      ctx.restore(); // end mid rotation
+
     } else {
-      // Tail is at the LEFT of the image (x = -targetW/2)
-      const pivotX = -targetW / 2 + tailW;
-      // Body
+      // Head at +targetW/2 (right), tail at -targetW/2 (left)
+      const pivotTail = -targetW / 2 + tailW;
+      const pivotMid  = -targetW / 2 + tailW + midW;
+
+      // 1. Front body / head — no rotation
       ctx.save();
       ctx.beginPath();
-      ctx.rect(pivotX - OVERLAP, -targetH / 2 - 4, targetW - tailW + OVERLAP, targetH + 8);
+      ctx.rect(pivotMid - OVERLAP, -targetH / 2 - 4, targetW - tailW - midW + OVERLAP, targetH + 8);
       ctx.clip();
       ctx.drawImage(sprite, sx, sy, sw, sh, -targetW / 2, -targetH / 2, targetW, targetH);
       ctx.restore();
-      // Tail (wag around pivot)
+
+      // 2. Mid + Tail — hierarchical
       ctx.save();
-      ctx.translate(pivotX, 0);
-      ctx.rotate(Math.sin(phase) * 0.22);
-      ctx.translate(-pivotX, 0);
+      ctx.translate(pivotMid, 0);
+      ctx.rotate(midAngle);
+      ctx.translate(-pivotMid, 0);
+
+      // 2a. Mid body
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(pivotTail - OVERLAP, -targetH / 2 - 4, midW + 2 * OVERLAP, targetH + 8);
+      ctx.clip();
+      ctx.drawImage(sprite, sx, sy, sw, sh, -targetW / 2, -targetH / 2, targetW, targetH);
+      ctx.restore();
+
+      // 2b. Tail — nested in mid's frame
+      ctx.save();
+      ctx.translate(pivotTail, 0);
+      ctx.rotate(tailAngle);
+      ctx.translate(-pivotTail, 0);
       ctx.beginPath();
       ctx.rect(-targetW / 2, -targetH / 2 - 4, tailW + OVERLAP, targetH + 8);
       ctx.clip();
       ctx.drawImage(sprite, sx, sy, sw, sh, -targetW / 2, -targetH / 2, targetW, targetH);
       ctx.restore();
+
+      ctx.restore(); // end mid rotation
     }
     ctx.restore();
   }
