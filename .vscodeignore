@@ -6,3 +6,6 @@ tsconfig.json
 **/*.map
 **/*.ts
 node_modules/**
+scripts/**
+.git/**
+LOGO_BRIEF.md

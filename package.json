@@ -1,14 +1,35 @@
 {
   "name": "vscode-aquarium",
   "displayName": "VSCode Aquarium",
-  "description": "A relaxing animated aquarium with fish that live inside your VS Code editor.",
+  "description": "A living, breathing aquarium with game mechanics inside your VS Code editor. Feed, grow, and manage your fish!",
   "version": "0.1.0",
   "publisher": "learnbeyondbc",
+  "license": "MIT",
+  "icon": "media/icon.png",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/learnbeyondbc/vscode-aquarium"
+  },
+  "bugs": {
+    "url": "https://github.com/learnbeyondbc/vscode-aquarium/issues"
+  },
+  "homepage": "https://github.com/learnbeyondbc/vscode-aquarium#readme",
+  "keywords": [
+    "aquarium",
+    "fish",
+    "pets",
+    "ambient",
+    "relaxing",
+    "animation",
+    "game",
+    "productivity"
+  ],
   "engines": {
     "vscode": "^1.75.0"
   },
   "categories": [
-    "Other"
+    "Other",
+    "Visualization"
   ],
   "main": "./out/extension.js",
   "activationEvents": [
@@ -18,23 +39,28 @@
     "commands": [
       {
         "command": "aquarium.open",
-        "title": "Aquarium: Open Aquarium"
+        "title": "Aquarium: Open Aquarium",
+        "category": "Aquarium"
       },
       {
         "command": "aquarium.addFish",
-        "title": "Aquarium: Add Fish"
+        "title": "Aquarium: Add Fish",
+        "category": "Aquarium"
       },
       {
         "command": "aquarium.removeAllFish",
-        "title": "Aquarium: Remove All Fish"
+        "title": "Aquarium: Remove All Fish",
+        "category": "Aquarium"
       },
       {
         "command": "aquarium.feed",
-        "title": "Aquarium: Feed Fish"
+        "title": "Aquarium: Feed Fish",
+        "category": "Aquarium"
       },
       {
         "command": "aquarium.switchType",
-        "title": "Aquarium: Switch Aquarium Type (Fresh/Salt)"
+        "title": "Aquarium: Switch Aquarium Type (Fresh/Salt)",
+        "category": "Aquarium"
       }
     ],
     "configuration": {
@@ -47,7 +73,7 @@
             "saltwater"
           ],
           "default": "freshwater",
-          "description": "Type of aquarium to display."
+          "description": "Type of aquarium to display (freshwater or saltwater)."
         },
         "aquarium.fish": {
           "type": "array",
@@ -59,7 +85,7 @@
               "species": "oscar"
             }
           ],
-          "description": "Fish currently living in the aquarium."
+          "description": "Fish currently living in the aquarium. Edit to customize your tank."
         }
       }
     }
@@ -67,12 +93,14 @@
   "scripts": {
     "vscode:prepublish": "npm run compile",
     "compile": "tsc -p ./",
-    "watch": "tsc -watch -p ./"
+    "watch": "tsc -watch -p ./",
+    "screenshot": "node scripts/screenshot.js"
   },
   "devDependencies": {
     "@fortawesome/fontawesome-free": "^7.2.0",
     "@types/node": "^18.0.0",
     "@types/vscode": "^1.75.0",
+    "playwright": "^1.59.1",
     "typescript": "^5.3.0"
   }
 }
