@@ -5,6 +5,7 @@
   const ctx = canvas.getContext('2d');
   const label = document.getElementById('label');
   const feedBtn = document.getElementById('feedBtn');
+  const foodTypeSelect = document.getElementById('foodType');
 
   let W = 0, H = 0;
   let aquariumType = 'freshwater';
@@ -82,8 +83,8 @@
     oscar:        { sheet: 'oscar',      fx: 0,        fy: 0,        fw: 1,        fh: 1,        targetH: 76,  facesLeft: false, tailRatio: 0.20 },
     snakehead:    { sheet: 'composite1', fx: 45/1339,  fy: 8/784,    fw: 1250/1339,fh: 248/784,  targetH: 34,  facesLeft: false, tailRatio: 0.22 },
     peacockbass:  { sheet: 'composite1', fx: 65/1339,  fy: 278/784,  fw: 1240/1339,fh: 255/784,  targetH: 64,  facesLeft: false, tailRatio: 0.22 },
-    alligatorgar: { sheet: 'ag',         fx: 0,        fy: 0,        fw: 1,        fh: 1,        targetH: 70,  facesLeft: false, tailRatio: 0.22 },
-    rtcatfish:    { sheet: 'rtc',        fx: 0,        fy: 0,        fw: 1,        fh: 1,        targetH: 62,  facesLeft: false, tailRatio: 0.25 },
+    alligatorgar: { sheet: 'ag',         fx: 0,        fy: 0,        fw: 1,        fh: 1,        targetH: 140, facesLeft: false, tailRatio: 0.22 },
+    rtcatfish:    { sheet: 'rtc',        fx: 0,        fy: 0,        fw: 1,        fh: 1,        targetH: 124, facesLeft: false, tailRatio: 0.25 },
     pleco:        { sheet: 'composite2', fx: 115/1339, fy: 540/784,  fw: 975/1339, fh: 242/784,  targetH: 48,  facesLeft: false, tailRatio: 0.18 },
     flowerhorn:   { sheet: 'flowerhorn', fx: 0,        fy: 0,        fw: 1,        fh: 1,        targetH: 88,  facesLeft: true,  tailRatio: 0.22 },
   };
@@ -119,7 +120,7 @@
 
   // Y zone fractions (fraction of canvas height) — controls vertical swim territory
   const SPECIES_ZONE = {
-    alligatorgar: { yMin: 0.05, yMax: 0.40 },
+    alligatorgar: { yMin: 0.08, yMax: 0.55 },
     arowana:      { yMin: 0.18, yMax: 0.32 },
     snakehead:    { yMin: 0.08, yMax: 0.52 },
     peacockbass:  { yMin: 0.15, yMax: 0.75 },
@@ -406,15 +407,120 @@
     ctx.restore();
   }
 
-  function drawPellets() {
-    ctx.save();
-    ctx.fillStyle = '#8a5a20';
+  function drawFood() {
     for (const p of pellets) {
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, 3, 0, Math.PI * 2);
-      ctx.fill();
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      const w = p.wiggle + (performance.now() / 600);
+      const type = p.type || 'pellet';
+
+      if (type === 'pellet') {
+        ctx.fillStyle = '#8a5a20';
+        ctx.beginPath();
+        ctx.arc(0, 0, 3.5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#b07838';
+        ctx.beginPath();
+        ctx.arc(-1, -1, 1.2, 0, Math.PI * 2);
+        ctx.fill();
+
+      } else if (type === 'superworm') {
+        ctx.rotate(p.angle + Math.sin(w) * 0.3);
+        // Segmented body — 6 overlapping ovals
+        const segs = 6, segL = 4, segH = 3.2;
+        for (let s = 0; s < segs; s++) {
+          const bx = (s - segs / 2 + 0.5) * (segL * 0.75);
+          const by = Math.sin(w + s * 0.8) * 1.2;
+          const t  = s / (segs - 1);
+          ctx.fillStyle = `hsl(42,${70 - t * 15}%,${52 + t * 10}%)`;
+          ctx.beginPath();
+          ctx.ellipse(bx, by, segL / 2, segH / 2, 0, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        // Head
+        ctx.fillStyle = '#3a2800';
+        ctx.beginPath();
+        ctx.arc((segs / 2) * (segL * 0.75) - 1, Math.sin(w + segs * 0.8) * 1.2, 2.5, 0, Math.PI * 2);
+        ctx.fill();
+
+      } else if (type === 'cricket') {
+        ctx.rotate(p.angle + Math.sin(w * 0.8) * 0.2);
+        // Body (oval)
+        ctx.fillStyle = '#5a4020';
+        ctx.beginPath();
+        ctx.ellipse(0, 0, 7, 4, 0, 0, Math.PI * 2);
+        ctx.fill();
+        // Head
+        ctx.fillStyle = '#3a2810';
+        ctx.beginPath();
+        ctx.ellipse(7, 0, 3, 3, 0, 0, Math.PI * 2);
+        ctx.fill();
+        // Antennae
+        ctx.strokeStyle = '#3a2810';
+        ctx.lineWidth = 0.8;
+        ctx.lineCap = 'round';
+        ctx.beginPath(); ctx.moveTo(9, -1); ctx.lineTo(15 + Math.sin(w) * 2, -5); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(9,  1); ctx.lineTo(14 + Math.cos(w) * 2,  5); ctx.stroke();
+        // Legs (3 per side)
+        ctx.strokeStyle = '#4a3018';
+        for (let l = 0; l < 3; l++) {
+          const lx = -3 + l * 3.5;
+          const kick = Math.sin(w * 1.5 + l * 1.1) * 2;
+          ctx.beginPath(); ctx.moveTo(lx, -3); ctx.lineTo(lx - 1, -7 - kick); ctx.stroke();
+          ctx.beginPath(); ctx.moveTo(lx,  3); ctx.lineTo(lx + 1,  7 + kick); ctx.stroke();
+        }
+
+      } else if (type === 'shrimp') {
+        ctx.rotate(p.angle);
+        // Curved segmented body
+        const bend = Math.sin(w * 0.9) * 0.25;
+        ctx.save();
+        ctx.rotate(bend);
+        // Tail fan
+        ctx.fillStyle = 'rgba(255,160,120,0.75)';
+        for (let f2 = -2; f2 <= 2; f2++) {
+          ctx.beginPath();
+          ctx.moveTo(-9, 0);
+          ctx.lineTo(-14 + Math.abs(f2), f2 * 3);
+          ctx.lineTo(-12, f2 * 1.5);
+          ctx.closePath();
+          ctx.fill();
+        }
+        // Body segments
+        const cols = ['#ffb09a','#ffa080','#ff9070','#ff8060','#e06850'];
+        for (let s = 0; s < 5; s++) {
+          const bx = (s - 2) * 3;
+          ctx.fillStyle = cols[s];
+          ctx.globalAlpha = 0.85;
+          ctx.beginPath();
+          ctx.ellipse(bx, Math.sin(bend * 3 + s * 0.5) * 1.2, 2.4, 3.5, 0, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.globalAlpha = 1;
+        // Head + rostrum
+        ctx.fillStyle = '#e06040';
+        ctx.beginPath();
+        ctx.ellipse(9, 0, 4, 3, 0, 0, Math.PI * 2);
+        ctx.fill();
+        // Rostrum spike
+        ctx.strokeStyle = '#c04020';
+        ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(12, -1); ctx.lineTo(17, -3); ctx.stroke();
+        // Eye
+        ctx.fillStyle = '#111';
+        ctx.beginPath(); ctx.arc(11, -1.5, 1, 0, Math.PI * 2); ctx.fill();
+        // Swimmerets
+        ctx.strokeStyle = 'rgba(255,160,120,0.6)';
+        ctx.lineWidth = 0.7;
+        for (let l = 0; l < 4; l++) {
+          const lx = l * 3.5 - 5;
+          ctx.beginPath(); ctx.moveTo(lx, 3); ctx.lineTo(lx + Math.sin(w + l) * 2, 7); ctx.stroke();
+        }
+        ctx.restore();
+      }
+
+      ctx.restore();
     }
-    ctx.restore();
   }
 
   // ===================== AROWANA =====================
@@ -949,7 +1055,7 @@
     drawBackground(t);
     drawPlants(t);
     drawBubbles();
-    drawPellets();
+    drawFood();
     for (const f of fish) drawFish(f);
   }
 
@@ -962,13 +1068,18 @@
   }
 
   // ---------- Interaction ----------
-  function dropFood(x, y) {
-    for (let i = 0; i < 6; i++) {
+  function dropFood(x, y, type) {
+    const foodType = type || (foodTypeSelect ? foodTypeSelect.value : 'pellet');
+    const count = foodType === 'superworm' ? 3 : foodType === 'cricket' ? 4 : 6;
+    for (let i = 0; i < count; i++) {
       pellets.push({
-        x: x + (Math.random() - 0.5) * 40,
+        x: x + (Math.random() - 0.5) * 50,
         y: y + (Math.random() - 0.5) * 10,
-        vy: 10 + Math.random() * 10,
-        life: 30
+        vy: 8 + Math.random() * 10,
+        life: 35,
+        type: foodType,
+        angle: Math.random() * Math.PI * 2,
+        wiggle: Math.random() * Math.PI * 2,
       });
     }
   }
