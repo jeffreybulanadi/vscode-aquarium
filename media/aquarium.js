@@ -11,7 +11,6 @@
   let fish = [];
   const bubbles = [];
   const plants = [];
-  const grassClusters = [];
   const pellets = [];
   let lastTime = performance.now();
 
@@ -84,7 +83,7 @@
     snakehead:    { sheet: 'composite1', fx: 45/1339,  fy: 8/784,    fw: 1250/1339,fh: 248/784,  targetW: 130, targetH: 34,  facesLeft: false, tailRatio: 0.22 },
     peacockbass:  { sheet: 'composite1', fx: 65/1339,  fy: 278/784,  fw: 1240/1339,fh: 255/784,  targetW: 108, targetH: 64,  facesLeft: false, tailRatio: 0.22 },
     axolotl:      { sheet: 'composite1', fx: 20/1339,  fy: 548/784,  fw: 1100/1339,fh: 230/784,  targetW: 82,  targetH: 44,  facesLeft: false, tailRatio: 0.15 },
-    alligatorgar: { sheet: 'composite2', fx: 5/1339,   fy: 5/784,    fw: 1265/1339,fh: 232/784,  targetW: 165, targetH: 26,  facesLeft: true,  tailRatio: 0.20 },
+    alligatorgar: { sheet: 'ag',        fx: 0,        fy: 0,        fw: 1,        fh: 1,        targetW: 175, targetH: 45,  facesLeft: false, tailRatio: 0.22 },
     rtcatfish:    { sheet: 'rtc',        fx: 0,        fy: 0,        fw: 1,        fh: 1,        targetW: 120, targetH: 62,  facesLeft: false, tailRatio: 0.25 },
     pleco:        { sheet: 'composite2', fx: 115/1339, fy: 540/784,  fw: 975/1339, fh: 242/784,  targetW: 90,  targetH: 48,  facesLeft: false, tailRatio: 0.18 },
     flowerhorn:   { sheet: 'flowerhorn', fx: 0,        fy: 0,        fw: 1,        fh: 1,        targetW: 105, targetH: 88,  facesLeft: true,  tailRatio: 0.22 },
@@ -126,7 +125,7 @@
   // Y zone fractions (fraction of canvas height) — controls vertical swim territory
   const SPECIES_ZONE = {
     alligatorgar: { yMin: 0.05, yMax: 0.40 },
-    arowana:      { yMin: 0.05, yMax: 0.12 },
+    arowana:      { yMin: 0.18, yMax: 0.32 },
     snakehead:    { yMin: 0.08, yMax: 0.52 },
     peacockbass:  { yMin: 0.15, yMax: 0.75 },
     oscar:        { yMin: 0.15, yMax: 0.75 },
@@ -152,7 +151,6 @@
     canvas.height = Math.floor(H * DPR);
     ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
     seedPlants();
-    seedGrass();
     fish.forEach(clampFish);
   }
   window.addEventListener('resize', resize);
@@ -160,32 +158,19 @@
   // ---------- Plants ----------
   function seedPlants() {
     plants.length = 0;
-    const count = Math.max(4, Math.floor(W / 120));
+    const count = Math.max(5, Math.floor(W / 110));
     for (let i = 0; i < count; i++) {
+      const hue = 95 + Math.random() * 35;
+      const numBlades = 5 + Math.floor(Math.random() * 6);
       plants.push({
-        x: (i + 0.5) * (W / count) + (Math.random() - 0.5) * 30,
-        height: 60 + Math.random() * 120,
+        x: (i + 0.2 + Math.random() * 0.6) * (W / count),
+        height: 75 + Math.random() * 110,
         sway: Math.random() * Math.PI * 2,
-        color: `hsl(${100 + Math.random() * 40}, 60%, ${25 + Math.random() * 15}%)`,
-        blades: 4 + Math.floor(Math.random() * 4)
-      });
-    }
-  }
-
-  function seedGrass() {
-    grassClusters.length = 0;
-    const sprite = SPRITES.grass1;
-    if (!sprite || W === 0) return;
-    const count = Math.max(3, Math.floor(W / 170));
-    const aspect = sprite.height / sprite.width;
-    for (let i = 0; i < count; i++) {
-      const scale = 0.8 + Math.random() * 0.5;
-      const clusterW = (140 + Math.random() * 60) * scale;
-      grassClusters.push({
-        x: (i + 0.25 + Math.random() * 0.5) * (W / count),
-        w: clusterW,
-        h: clusterW * aspect,
-        phase: Math.random() * Math.PI * 2,
+        hue,
+        blades: numBlades,
+        bladeOffsets: Array.from({length: numBlades}, (_, b) => (b - numBlades/2 + 0.5) * 9 + (Math.random()-0.5)*4),
+        bladePhases:  Array.from({length: numBlades}, () => Math.random() * Math.PI * 2),
+        bladeHeights: Array.from({length: numBlades}, () => 0.55 + Math.random() * 0.45),
       });
     }
   }
@@ -255,7 +240,9 @@
   }
 
   function rebuildFish(list) {
-    fish = list.map((entry) => makeFish(entry.species, entry.colorVariant));
+    fish = list
+      .filter(entry => entry.species === 'arowana' || !!SPRITE_SPECIES[entry.species])
+      .map(entry => makeFish(entry.species, entry.colorVariant));
     fish.forEach(clampFish);
   }
 
@@ -361,48 +348,45 @@
     }
     ctx.restore();
 
-    if (!SPRITES.grass1) {
-      const gravelH = 28;
-      ctx.fillStyle = aquariumType === 'saltwater' ? '#c8b884' : '#3a2a1a';
-      ctx.fillRect(0, H - gravelH, W, gravelH);
-      ctx.fillStyle = aquariumType === 'saltwater' ? '#b09860' : '#5a3a22';
-      for (let i = 0; i < W; i += 8) {
-        ctx.beginPath();
-        ctx.arc(i + (i % 16 ? 0 : 4), H - gravelH + 4 + (i % 7), 3, 0, Math.PI * 2);
-        ctx.fill();
-      }
+    const gravelH = 28;
+    ctx.fillStyle = aquariumType === 'saltwater' ? '#c8b884' : '#3a2a1a';
+    ctx.fillRect(0, H - gravelH, W, gravelH);
+    ctx.fillStyle = aquariumType === 'saltwater' ? '#b09860' : '#5a3a22';
+    for (let i = 0; i < W; i += 8) {
+      ctx.beginPath();
+      ctx.arc(i + (i % 16 ? 0 : 4), H - gravelH + 4 + (i % 7), 3, 0, Math.PI * 2);
+      ctx.fill();
     }
   }
 
+  // Filled bezier blade plants with gradient — much nicer than stroke-only
   function drawPlants(t) {
     for (const p of plants) {
       ctx.save();
-      ctx.translate(p.x, H - 20);
-      const sway = Math.sin(t * 1.5 + p.sway) * 0.15;
-      ctx.strokeStyle = p.color;
-      ctx.lineWidth = 6;
-      ctx.lineCap = 'round';
+      ctx.translate(p.x, H - 28); // sit on top of gravel
+      const master = Math.sin(t * 1.2 + p.sway);
       for (let b = 0; b < p.blades; b++) {
-        const offset = (b - p.blades / 2) * 5;
-        ctx.beginPath();
-        ctx.moveTo(offset, 0);
-        ctx.quadraticCurveTo(offset + sway * 30, -p.height / 2, offset + sway * 60, -p.height);
-        ctx.stroke();
-      }
-      ctx.restore();
-    }
-  }
+        const ox = p.bladeOffsets[b];
+        const h  = p.height * p.bladeHeights[b];
+        const sw = master * 0.14 + Math.sin(t * 1.9 + p.bladePhases[b]) * 0.05;
+        const tx = ox + sw * h, ty = -h;
+        const cx1 = ox + sw * h * 0.30, cy1 = -h * 0.38;
+        const cx2 = tx - sw * h * 0.08, cy2 = -h * 0.72;
+        const hw  = Math.max(1.5, 4.2 - Math.abs(ox) * 0.05);
 
-  // Draws grass1 sprite clusters at the bottom; falls back to canvas plants
-  function drawUnderwaterGrass(t) {
-    const sprite = SPRITES.grass1;
-    if (!sprite) { drawPlants(t); return; }
-    if (grassClusters.length === 0) seedGrass();
-    for (const gc of grassClusters) {
-      const sway = Math.sin(t * 1.3 + gc.phase) * 5;
-      ctx.save();
-      ctx.translate(gc.x + sway, H - gc.h);
-      ctx.drawImage(sprite, -gc.w / 2, 0, gc.w, gc.h);
+        const grad = ctx.createLinearGradient(ox, 0, tx, ty);
+        grad.addColorStop(0,   `hsl(${p.hue - 8}, 52%, 13%)`);
+        grad.addColorStop(0.5, `hsl(${p.hue},     65%, 26%)`);
+        grad.addColorStop(1,   `hsl(${p.hue + 10},73%, 38%)`);
+
+        ctx.beginPath();
+        ctx.moveTo(ox - hw, -1);
+        ctx.bezierCurveTo(cx1 - hw * 0.7, cy1, cx2 - hw * 0.3, cy2, tx, ty);
+        ctx.bezierCurveTo(cx2 + hw * 0.3, cy2, cx1 + hw * 0.7, cy1, ox + hw, -1);
+        ctx.closePath();
+        ctx.fillStyle = grad;
+        ctx.fill();
+      }
       ctx.restore();
     }
   }
@@ -449,8 +433,8 @@
     const phase = f.tailPhase;
     const dir = f.vx >= 0 ? 1 : -1;
 
-    // Scale sprite to ~80px tall, preserving aspect ratio
-    const targetH = 80;
+    // Scale sprite to ~160px tall (2× previous), preserving aspect ratio
+    const targetH = 160;
     const targetW = (sprite.width / sprite.height) * targetH;
 
     // Tail occupies rightmost 22% of the original image
@@ -959,7 +943,7 @@
 
   function render(t) {
     drawBackground(t);
-    drawUnderwaterGrass(t);
+    drawPlants(t);
     drawBubbles();
     drawPellets();
     for (const f of fish) drawFish(f);

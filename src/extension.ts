@@ -162,8 +162,8 @@ function getHtml(context: vscode.ExtensionContext, webview: vscode.Webview): str
   const flowerHornUri = webview.asWebviewUri(
     vscode.Uri.file(path.join(context.extensionPath, 'media', 'flower-horn.jpg'))
   );
-  const underwaterGrassUri = webview.asWebviewUri(
-    vscode.Uri.file(path.join(context.extensionPath, 'media', 'grass 1.jpg'))
+  const agUri = webview.asWebviewUri(
+    vscode.Uri.file(path.join(context.extensionPath, 'media', 'ag.jpg'))
   );
   const csp = `default-src 'none'; img-src ${webview.cspSource} data:; style-src ${webview.cspSource} 'unsafe-inline'; script-src 'nonce-${nonce}';`;
   html = html
@@ -178,7 +178,7 @@ function getHtml(context: vscode.ExtensionContext, webview: vscode.Webview): str
     .replace(/{{composite2Uri}}/g, composite2Uri.toString())
     .replace(/{{rtcUri}}/g, rtcUri.toString())
     .replace(/{{flowerHornUri}}/g, flowerHornUri.toString())
-    .replace(/{{underwaterGrassUri}}/g, underwaterGrassUri.toString());
+    .replace(/{{agUri}}/g, agUri.toString());
   return html;
 }
 
