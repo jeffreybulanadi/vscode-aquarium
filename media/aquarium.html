@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="Content-Security-Policy" content="{{csp}}" />
+  <link rel="stylesheet" href="{{styleUri}}" />
+  <title>Aquarium</title>
+</head>
+<body>
+  <div id="tank">
+    <canvas id="aquarium"></canvas>
+    <div id="hud">
+      <span id="label">🐟 Freshwater Aquarium</span>
+      <button id="feedBtn" title="Drop food">🍽️ Feed</button>
+    </div>
+  </div>
+  <script nonce="{{nonce}}">window.FISH_ASSETS={arowana:'{{arowanaUri}}',oscar:'{{oscarUri}}',composite1:'{{composite1Uri}}',composite2:'{{composite2Uri}}',rtc:'{{rtcUri}}',flowerhorn:'{{flowerHornUri}}',underwatergrass:'{{underwaterGrassUri}}'};</script>
+  <script nonce="{{nonce}}" src="{{scriptUri}}"></script>
+</body>
+</html>
