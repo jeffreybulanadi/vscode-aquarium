@@ -104,6 +104,10 @@ function openAquarium(context: vscode.ExtensionContext) {
   panel.webview.onDidReceiveMessage((msg) => {
     if (msg?.type === 'ready') {
       pushState(context);
+    } else if (msg?.type === 'spawnFish') {
+      const fish = getConfig().get<any[]>('fish', []).slice();
+      fish.push({ species: msg.species, colorVariant: msg.colorVariant });
+      getConfig().update('fish', fish, vscode.ConfigurationTarget.Global);
     } else if (msg?.type === 'gameUpdate') {
       const { coins, fishCount } = msg;
       context.globalState.update('aquarium.coins', coins);
@@ -177,7 +181,7 @@ async function switchType(context: vscode.ExtensionContext) {
   const cur = cfg.get<string>('type', 'freshwater');
   const next = cur === 'freshwater' ? 'saltwater' : 'freshwater';
   const defaults = next === 'freshwater'
-    ? [{ species: 'arowana' }, { species: 'oscar' }, { species: 'peacockbass' }, { species: 'pleco' }]
+    ? [{ species: 'arowana', colorVariant: 'silver' }, { species: 'oscar', colorVariant: 'tiger' }, { species: 'oscar', colorVariant: 'albino' }]
     : [{ species: 'clownfish' }, { species: 'tang' }];
   await cfg.update('type', next, vscode.ConfigurationTarget.Global);
   await cfg.update('fish', defaults, vscode.ConfigurationTarget.Global);

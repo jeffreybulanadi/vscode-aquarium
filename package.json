@@ -87,12 +87,9 @@
         "aquarium.fish": {
           "type": "array",
           "default": [
-            {
-              "species": "arowana"
-            },
-            {
-              "species": "oscar"
-            }
+            { "species": "arowana", "colorVariant": "silver" },
+            { "species": "oscar",   "colorVariant": "tiger"  },
+            { "species": "oscar",   "colorVariant": "albino" }
           ],
           "description": "Fish currently living in the aquarium. Edit to customize your tank."
         }

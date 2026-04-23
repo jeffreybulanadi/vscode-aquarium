@@ -1287,6 +1287,35 @@
     dropFood(mx, my);
   });
 
+  const spawnBtn = document.getElementById('spawnBtn');
+  const spawnPanel = document.getElementById('spawnPanel');
+
+  spawnBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    spawnPanel.classList.toggle('hidden');
+  });
+
+  document.addEventListener('click', (e) => {
+    if (!spawnPanel.classList.contains('hidden') &&
+        !spawnPanel.contains(e.target) && e.target !== spawnBtn) {
+      spawnPanel.classList.add('hidden');
+    }
+  });
+
+  spawnPanel.querySelectorAll('.spawn-variants button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const species = btn.dataset.species;
+      const variant = btn.dataset.variant;
+      const f = makeFish(species, variant);
+      fish.push(f);
+      clampFish(f);
+      const typeText = aquariumType === 'saltwater' ? 'Saltwater' : 'Freshwater';
+      label.innerHTML = `<i class="fa-solid fa-fish"></i> ${typeText} · ${fish.length} fish`;
+      vscode.postMessage({ type: 'spawnFish', species, colorVariant: variant });
+      spawnPanel.classList.add('hidden');
+    });
+  });
+
   feedBtn.addEventListener('click', () => dropFood(W / 2, 20));
 
   cleanBtn.addEventListener('click', () => {
