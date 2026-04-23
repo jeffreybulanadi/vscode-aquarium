@@ -136,11 +136,23 @@
     pleco:        { yMin: 0.90, yMax: 0.97 },
   };
 
-  // Base swim speeds (px/s)
+  // Base swim speeds (px/s) — differentiated per species behavior
   const SPECIES_SPEED = {
-    peacockbass: 45, arowana: 35, snakehead: 30,
-    oscar: 22, rtcatfish: 22, alligatorgar: 22, flowerhorn: 18,
-    pleco: 8,
+    arowana: 65, peacockbass: 52, snakehead: 42,
+    alligatorgar: 28, oscar: 22, flowerhorn: 18,
+    rtcatfish: 14, pleco: 6,
+  };
+
+  // Tail wag frequency multiplier per species
+  const SPECIES_TAIL_FREQ = {
+    arowana: 1.4, peacockbass: 1.2, snakehead: 1.1, oscar: 1.0,
+    alligatorgar: 0.65, flowerhorn: 1.0, rtcatfish: 0.85, pleco: 0.35,
+  };
+
+  // Tail wag angle amplitude per species (radians)
+  const SPECIES_WAG_AMP = {
+    arowana: 0.28, peacockbass: 0.24, snakehead: 0.22, oscar: 0.20,
+    alligatorgar: 0.12, flowerhorn: 0.20, rtcatfish: 0.17, pleco: 0.09,
   };
 
   // Hunger decay rate (units/sec). Fish hunger 0→100 over time;
@@ -167,6 +179,21 @@
     arowana: 'Arowana', oscar: 'Oscar Cichlid', snakehead: 'Snakehead',
     peacockbass: 'Peacock Bass', alligatorgar: 'Alligator Gar',
     rtcatfish: 'Red-Tailed Catfish', pleco: 'Pleco', flowerhorn: 'Flowerhorn',
+  };
+
+  // Per-species face overlay: eye/mouth positions in sprite-local coords (fractions of targetW/targetH).
+  // eyeX/mouthX: positive = toward RIGHT of image.
+  // facesLeft fish (arowana, flowerhorn) have their head at the negative-X side of the image.
+  // facesRight fish (all others) have their head at the positive-X side.
+  const SPECIES_FACE = {
+    arowana:      { eyeX: -0.35, eyeY: -0.14, eyeR: 0.040, mouthX: -0.47, mouthY:  0.06 },
+    oscar:        { eyeX:  0.30, eyeY: -0.14, eyeR: 0.090, mouthX:  0.44, mouthY:  0.08 },
+    snakehead:    { eyeX:  0.37, eyeY: -0.22, eyeR: 0.068, mouthX:  0.46, mouthY:  0.04 },
+    peacockbass:  { eyeX:  0.34, eyeY: -0.18, eyeR: 0.075, mouthX:  0.45, mouthY:  0.08 },
+    alligatorgar: { eyeX:  0.37, eyeY: -0.10, eyeR: 0.038, mouthX:  0.48, mouthY:  0.02 },
+    rtcatfish:    { eyeX:  0.32, eyeY: -0.17, eyeR: 0.058, mouthX:  0.43, mouthY:  0.10 },
+    pleco:        { eyeX:  0.30, eyeY: -0.20, eyeR: 0.065, mouthX:  0.42, mouthY:  0.08 },
+    flowerhorn:   { eyeX: -0.27, eyeY: -0.14, eyeR: 0.095, mouthX: -0.37, mouthY:  0.10 },
   };
 
   // ---------- Resize ----------
@@ -264,6 +291,8 @@
       growthScale: 1.0,  // grows with feeding, max 1.5
       dead: false,
       deathTimer: 0,
+      blinkOffset: Math.random() * 10,       // random phase so fish don't blink in sync
+      blinkEvery:  3.5 + Math.random() * 4.5, // blink every 3.5-8 seconds
     };
   }
 
@@ -347,7 +376,7 @@
         continue;
       }
 
-      f.tailPhase += dt * (4 + Math.abs(f.vx) * 0.06);
+      f.tailPhase += dt * (SPECIES_TAIL_FREQ[f.species] || 1.0) * (4 + Math.abs(f.vx) * 0.06);
 
       // Invalidate target if pellet was eaten by another fish
       if (f.target && !pellets.includes(f.target)) { f.target = null; f.mood = 'wander'; }
@@ -1107,6 +1136,79 @@
   }
 
   // ===================== GENERIC SPRITE FISH =====================
+  // Face overlay drawn on top of sprite body — eye blink + mouth breathing animation.
+  // Called inside drawSpriteSheetFish while the sprite's transform is still active,
+  // so positions in targetW/targetH local space map correctly for any swim direction.
+  function drawFaceOverlay(f, targetW, targetH) {
+    if (f.dead) return;
+    const face = SPECIES_FACE[f.species];
+    if (!face) return;
+
+    const t    = performance.now() / 1000;
+    const eyeX = face.eyeX * targetW;
+    const eyeY = face.eyeY * targetH;
+    const eyeR = face.eyeR * targetH;
+    const mouthX = face.mouthX * targetW;
+    const mouthY = face.mouthY * targetH;
+
+    // Blink: each fish has a unique random offset so they don't all blink together.
+    const blinkCycle = (t + f.blinkOffset) % f.blinkEvery;
+    const isBlinking  = blinkCycle < 0.12;
+
+    ctx.save();
+    ctx.filter = 'none'; // draw eye without the species color filter
+
+    // Sclera
+    ctx.fillStyle = 'rgba(238,235,220,0.92)';
+    ctx.beginPath();
+    ctx.arc(eyeX, eyeY, eyeR, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Iris ring
+    ctx.strokeStyle = 'rgba(55,38,12,0.50)';
+    ctx.lineWidth = eyeR * 0.28;
+    ctx.beginPath();
+    ctx.arc(eyeX, eyeY, eyeR * 0.72, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // Pupil
+    ctx.fillStyle = '#0c0c0c';
+    ctx.beginPath();
+    ctx.arc(eyeX, eyeY, eyeR * 0.50, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Catchlight — top of eye (light from above is always correct after any X-flip)
+    ctx.fillStyle = 'rgba(255,255,255,0.72)';
+    ctx.beginPath();
+    ctx.arc(eyeX, eyeY - eyeR * 0.32, eyeR * 0.22, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Eyelid when blinking — scales from 0 to full coverage and back
+    if (isBlinking) {
+      const closeRatio = blinkCycle < 0.06
+        ? blinkCycle / 0.06            // closing  0 → 1
+        : (0.12 - blinkCycle) / 0.06; // opening  1 → 0
+      ctx.fillStyle = 'rgba(45,30,18,0.90)';
+      ctx.beginPath();
+      ctx.ellipse(eyeX, eyeY, eyeR * 1.05, Math.max(0.5, eyeR * closeRatio), 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Mouth: fixed width, height breathes slowly; faster and wider when chasing food.
+    const feeding = f.mood === 'feeding';
+    const breathe = feeding
+      ? Math.abs(Math.sin(t * 5.0 + f.blinkOffset)) * 0.55 + 0.18  // active feeding
+      : Math.abs(Math.sin(t * 1.3 + f.blinkOffset)) * 0.18;         // slow breathing
+    const mW = eyeR * 0.95;
+    const mH = Math.max(0.6, eyeR * 0.16 + breathe * eyeR);
+    ctx.fillStyle = 'rgba(12,6,3,0.68)';
+    ctx.beginPath();
+    ctx.ellipse(mouthX, mouthY, mW, mH, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.restore();
+  }
+
   // Handles any species in SPRITE_SPECIES: crops from sheet, applies color filter,
   // splits into body + tail with wag animation.
   function drawSpriteSheetFish(f) {
@@ -1127,6 +1229,7 @@
     const targetW = targetH * (sw / sh);
     const tailW   = targetW * tailRatio;
     const OVERLAP = Math.max(5, Math.round(targetH * 0.06));
+    const wagAmp  = SPECIES_WAG_AMP[f.species] || 0.22;
 
     ctx.save();
     ctx.translate(f.x, f.y + Math.sin(phase * 0.7) * 1.5);
@@ -1150,7 +1253,7 @@
       // Tail (wag around pivot)
       ctx.save();
       ctx.translate(pivotX, 0);
-      ctx.rotate(Math.sin(phase) * 0.22);
+      ctx.rotate(Math.sin(phase) * wagAmp);
       ctx.translate(-pivotX, 0);
       ctx.beginPath();
       ctx.rect(pivotX - OVERLAP, -targetH / 2 - 4, tailW + OVERLAP, targetH + 8);
@@ -1170,14 +1273,15 @@
       // Tail (wag around pivot)
       ctx.save();
       ctx.translate(pivotX, 0);
-      ctx.rotate(Math.sin(phase) * 0.22);
+      ctx.rotate(Math.sin(phase) * wagAmp);
       ctx.translate(-pivotX, 0);
       ctx.beginPath();
-      ctx.rect(-targetW / 2, -targetH / 2 - 4, tailW + OVERLAP, targetH + 8);
+      ctx.rect(pivotX - OVERLAP, -targetH / 2 - 4, tailW + OVERLAP, targetH + 8);
       ctx.clip();
       ctx.drawImage(sprite, sx, sy, sw, sh, -targetW / 2, -targetH / 2, targetW, targetH);
       ctx.restore();
     }
+    drawFaceOverlay(f, targetW, targetH);
     ctx.restore();
   }
 
