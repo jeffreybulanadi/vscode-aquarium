@@ -3,17 +3,17 @@
   "displayName": "VSCode Aquarium",
   "description": "A living, breathing aquarium with game mechanics inside your VS Code editor. Feed, grow, and manage your fish!",
   "version": "0.1.0",
-  "publisher": "learnbeyondbc",
+  "publisher": "jeffreybulanadi",
   "license": "MIT",
   "icon": "media/icon.png",
   "repository": {
     "type": "git",
-    "url": "https://github.com/learnbeyondbc/vscode-aquarium"
+    "url": "https://github.com/jeffreybulanadi/vscode-aquarium"
   },
   "bugs": {
-    "url": "https://github.com/learnbeyondbc/vscode-aquarium/issues"
+    "url": "https://github.com/jeffreybulanadi/vscode-aquarium/issues"
   },
-  "homepage": "https://github.com/learnbeyondbc/vscode-aquarium#readme",
+  "homepage": "https://github.com/jeffreybulanadi/vscode-aquarium#readme",
   "keywords": [
     "aquarium",
     "fish",
@@ -61,6 +61,11 @@
         "command": "aquarium.switchType",
         "title": "Aquarium: Switch Aquarium Type (Fresh/Salt)",
         "category": "Aquarium"
+      },
+      {
+        "command": "aquarium.toggleAutoOpen",
+        "title": "Aquarium: Toggle Auto-open on Startup",
+        "category": "Aquarium"
       }
     ],
     "configuration": {
@@ -74,6 +79,11 @@
           ],
           "default": "freshwater",
           "description": "Type of aquarium to display (freshwater or saltwater)."
+        },
+        "aquarium.autoOpen": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically open the aquarium when VS Code starts."
         },
         "aquarium.fish": {
           "type": "array",

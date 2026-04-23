@@ -36,8 +36,34 @@ export function activate(context: vscode.ExtensionContext) {
   statusBar.show();
   context.subscriptions.push(statusBar);
 
-  // Auto-open the aquarium when the extension activates
-  openAquarium(context);
+  const cfg = getConfig();
+  const autoOpen = cfg.get<boolean>('autoOpen', true);
+  const welcomed = context.globalState.get<boolean>('aquarium.welcomed', false);
+
+  if (autoOpen) {
+    openAquarium(context);
+  }
+
+  if (!welcomed) {
+    context.globalState.update('aquarium.welcomed', true);
+    if (autoOpen) {
+      vscode.window.showInformationMessage(
+        'Welcome to VSCode Aquarium! Your tank opens automatically each time VS Code starts.',
+        'Disable Auto-open'
+      ).then(choice => {
+        if (choice === 'Disable Auto-open') {
+          getConfig().update('autoOpen', false, vscode.ConfigurationTarget.Global);
+        }
+      });
+    } else {
+      vscode.window.showInformationMessage(
+        'VSCode Aquarium is installed. Open it from the status bar or via Command Palette: "Aquarium: Open Aquarium".',
+        'Open Now'
+      ).then(choice => {
+        if (choice === 'Open Now') { openAquarium(context); }
+      });
+    }
+  }
 
   context.subscriptions.push(
     vscode.commands.registerCommand('aquarium.open', () => openAquarium(context)),
@@ -46,7 +72,8 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand('aquarium.feed', () => {
       panel?.webview.postMessage({ type: 'feed' });
     }),
-    vscode.commands.registerCommand('aquarium.switchType', () => switchType(context))
+    vscode.commands.registerCommand('aquarium.switchType', () => switchType(context)),
+    vscode.commands.registerCommand('aquarium.toggleAutoOpen', () => toggleAutoOpen())
   );
 }
 
@@ -156,6 +183,15 @@ async function switchType(context: vscode.ExtensionContext) {
   await cfg.update('fish', defaults, vscode.ConfigurationTarget.Global);
   pushState(context);
   vscode.window.showInformationMessage(`Aquarium switched to ${next}.`);
+}
+
+async function toggleAutoOpen() {
+  const cfg = getConfig();
+  const current = cfg.get<boolean>('autoOpen', true);
+  await cfg.update('autoOpen', !current, vscode.ConfigurationTarget.Global);
+  vscode.window.showInformationMessage(
+    `Aquarium auto-open on startup is now ${!current ? 'enabled' : 'disabled'}.`
+  );
 }
 
 function getHtml(context: vscode.ExtensionContext, webview: vscode.Webview): string {
