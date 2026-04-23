@@ -25,8 +25,17 @@ const SPECIES_COLOR_VARIANTS_EXT: Record<string, string[]> = {
 };
 
 let panel: vscode.WebviewPanel | undefined;
+let statusBar: vscode.StatusBarItem | undefined;
 
 export function activate(context: vscode.ExtensionContext) {
+  // Status bar — always visible summary of tank health
+  statusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
+  statusBar.command = 'aquarium.open';
+  statusBar.tooltip = 'Open Aquarium';
+  statusBar.text = '🐟 Aquarium';
+  statusBar.show();
+  context.subscriptions.push(statusBar);
+
   // Auto-open the aquarium when the extension activates
   openAquarium(context);
 
@@ -43,6 +52,7 @@ export function activate(context: vscode.ExtensionContext) {
 
 export function deactivate() {
   panel?.dispose();
+  statusBar?.dispose();
 }
 
 function openAquarium(context: vscode.ExtensionContext) {
@@ -67,6 +77,19 @@ function openAquarium(context: vscode.ExtensionContext) {
   panel.webview.onDidReceiveMessage((msg) => {
     if (msg?.type === 'ready') {
       pushState(context);
+    } else if (msg?.type === 'gameUpdate') {
+      const { coins, fishCount } = msg;
+      context.globalState.update('aquarium.coins', coins);
+      if (statusBar) {
+        statusBar.text = `🐟 ${fishCount} fish · 💰 ${coins}`;
+      }
+    } else if (msg?.type === 'fishDied') {
+      const name = SPECIES_LABELS[msg.species] || msg.species;
+      vscode.window.showWarningMessage(
+        `💀 Your ${name} has died! Feed your fish regularly to keep them alive.`
+      );
+    } else if (msg?.type === 'achievement') {
+      vscode.window.showInformationMessage(`🏆 Achievement: ${msg.text}`);
     }
   });
 
@@ -84,10 +107,12 @@ function pushState(context: vscode.ExtensionContext) {
     return;
   }
   const cfg = getConfig();
+  const coins = context.globalState.get<number>('aquarium.coins', 0);
   panel.webview.postMessage({
     type: 'state',
     aquariumType: cfg.get<string>('type', 'freshwater'),
-    fish: cfg.get<any[]>('fish', [])
+    fish: cfg.get<any[]>('fish', []),
+    coins,
   });
 }
 

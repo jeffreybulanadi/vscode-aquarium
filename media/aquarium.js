@@ -5,15 +5,21 @@
   const ctx = canvas.getContext('2d');
   const label = document.getElementById('label');
   const feedBtn = document.getElementById('feedBtn');
+  const cleanBtn = document.getElementById('cleanBtn');
+  const coinsLabel = document.getElementById('coinsLabel');
   const foodTypeSelect = document.getElementById('foodType');
 
   let W = 0, H = 0;
   let aquariumType = 'freshwater';
   let fish = [];
   let bgCanvas = null;
+  let coins = 0;
+  let cleanCooldown = 0;     // seconds until Clean button re-enables
+  let tooltipData = null;    // { lines, x, y, expires (ms) }
   const bubbles = [];
   const plants = [];
   const pellets = [];
+  const waste = [];          // { x, oy, size, alpha } — uneaten food debris on gravel
   let lastTime = performance.now();
 
   // ---------- Sprite loading ----------
@@ -105,7 +111,7 @@
     snakehead:    { yMin: 0.08, yMax: 0.52 },
     peacockbass:  { yMin: 0.15, yMax: 0.75 },
     oscar:        { yMin: 0.15, yMax: 0.75 },
-    rtcatfish:    { yMin: 0.20, yMax: 0.82 },
+    rtcatfish:    { yMin: 0.68, yMax: 0.92 },
     flowerhorn:   { yMin: 0.18, yMax: 0.78 },
     pleco:        { yMin: 0.90, yMax: 0.97 },
   };
@@ -115,6 +121,32 @@
     peacockbass: 45, arowana: 35, snakehead: 30,
     oscar: 22, rtcatfish: 22, alligatorgar: 22, flowerhorn: 18,
     pleco: 8,
+  };
+
+  // Hunger decay rate (units/sec). Fish hunger 0→100 over time;
+  // rates set so fish survive ~2-3 hrs without feeding before dying.
+  const HUNGER_DECAY = {
+    arowana: 0.010, oscar: 0.013, snakehead: 0.011, peacockbass: 0.013,
+    alligatorgar: 0.008, rtcatfish: 0.010, pleco: 0.006, flowerhorn: 0.013,
+  };
+
+  // Preferred food per species — correct food earns +15 coins & more satiety
+  const FOOD_PREFERENCE = {
+    arowana:      ['cricket', 'shrimp'],
+    oscar:        ['cricket', 'superworm'],
+    snakehead:    ['cricket', 'shrimp'],
+    peacockbass:  ['shrimp', 'superworm'],
+    alligatorgar: ['superworm', 'shrimp'],
+    rtcatfish:    ['superworm', 'pellet'],
+    pleco:        ['pellet'],
+    flowerhorn:   ['cricket', 'superworm'],
+  };
+
+  // Friendly species names (shown in tooltip)
+  const SPECIES_LABEL = {
+    arowana: 'Arowana', oscar: 'Oscar Cichlid', snakehead: 'Snakehead',
+    peacockbass: 'Peacock Bass', alligatorgar: 'Alligator Gar',
+    rtcatfish: 'Red-Tailed Catfish', pleco: 'Pleco', flowerhorn: 'Flowerhorn',
   };
 
   // ---------- Resize ----------
@@ -208,7 +240,10 @@
       tailPhase: Math.random() * Math.PI * 2,
       mood: 'wander',
       target: null,
-      hunger: 0
+      hunger: 0,         // 0 = full, 100 = starving
+      growthScale: 1.0,  // grows with feeding, max 1.5
+      dead: false,
+      deathTimer: 0,
     };
   }
 
@@ -249,6 +284,11 @@
         p.vy = 0;
         // Food resting on floor: use a slower decay so it persists longer
         if (!p.resting) { p.resting = true; p.restLife = 60; }
+        // Spawn a waste particle once per resting item (5 s after landing)
+        if (!p.wasteSpawned && p.restLife < 55) {
+          p.wasteSpawned = true;
+          waste.push({ x: p.x + (Math.random() - 0.5) * 8, oy: Math.random() * 5, size: 1 + Math.random() * 2, alpha: 0.65 });
+        }
         p.restLife -= dt;
         if (p.restLife <= 0) pellets.splice(i, 1);
       } else {
@@ -257,11 +297,43 @@
       }
     }
 
-    for (const f of fish) {
-      f.hunger += dt * 0.05;
+    cleanCooldown = Math.max(0, cleanCooldown - dt);
+
+    // ---- Fish update (index loop so we can splice dead fish) ----
+    for (let i = fish.length - 1; i >= 0; i--) {
+      const f = fish[i];
+
+      // Dead fish: float to surface then fade out and remove
+      if (f.dead) {
+        f.deathTimer += dt;
+        f.y += (H * 0.05 - f.y) * Math.min(1, dt * 0.6);  // drift toward surface
+        f.vx *= Math.pow(0.92, dt * 60);                    // slow horizontal drift
+        f.tailPhase += dt * 1.5;
+        if (f.deathTimer > 8) {
+          fish.splice(i, 1);
+          const t2 = aquariumType === 'saltwater' ? '🐠 Saltwater' : '🐟 Freshwater';
+          label.textContent = `${t2} · ${fish.length} fish`;
+          vscode.postMessage({ type: 'gameUpdate', coins, fishCount: fish.length });
+        }
+        continue;
+      }
+
+      // Hunger accumulates over time — 0=full, 100=starving
+      f.hunger = Math.min(100, f.hunger + (HUNGER_DECAY[f.species] || 0.010) * dt);
+      if (f.hunger >= 100) {
+        f.dead = true;
+        f.deathTimer = 0;
+        vscode.postMessage({ type: 'fishDied', species: f.species });
+        continue;
+      }
+
       f.tailPhase += dt * (4 + Math.abs(f.vx) * 0.06);
 
-      if (pellets.length > 0 && (!f.target || !pellets.includes(f.target))) {
+      // Invalidate target if pellet was eaten by another fish
+      if (f.target && !pellets.includes(f.target)) { f.target = null; f.mood = 'wander'; }
+
+      // Find nearest food to chase (only if not already tracking one)
+      if (pellets.length > 0 && !f.target) {
         let best = null, bestD = Infinity;
         for (const p of pellets) {
           const d = (p.x - f.x) ** 2 + (p.y - f.y) ** 2;
@@ -277,20 +349,34 @@
         const dx = f.target.x - f.x;
         const dy = f.target.y - f.y;
         const dist = Math.hypot(dx, dy) || 1;
-        const speed = 80 + f.hunger * 20;
+        // Hungrier fish swim faster toward food (range 65–130 px/s)
+        const speed = 65 + f.hunger * 0.65;
         desiredVx = (dx / dist) * speed;
         desiredVy = (dy / dist) * speed;
-        if (dist < 15) {
-          const idx = pellets.indexOf(f.target);
-          if (idx >= 0) pellets.splice(idx, 1);
-          f.hunger = Math.max(0, f.hunger - 1);
+        if (dist < 22) {
+          // Eat the food
+          const foodType = f.target.type || 'pellet';
+          const preferred = (FOOD_PREFERENCE[f.species] || []).includes(foodType);
+          const hungerRestore = preferred ? 32 : 18;
+          const coinEarn = preferred ? 15 : 8;
+          f.hunger = Math.max(0, f.hunger - hungerRestore);
+          f.growthScale = Math.min(1.5, f.growthScale + 0.003);
+          coins += coinEarn;
+          coinsLabel.textContent = `💰 ${coins}`;
+          pellets.splice(pellets.indexOf(f.target), 1);
           f.target = null;
+          f.mood = 'wander';
+          vscode.postMessage({ type: 'gameUpdate', coins, fishCount: fish.length });
         }
       } else {
         f.changeIn -= dt;
         if (f.changeIn <= 0) {
           f.changeIn = 2 + Math.random() * 4;
-          const z = SPECIES_ZONE[f.species] || { yMin: 0.10, yMax: 0.85 };
+          let z = SPECIES_ZONE[f.species] || { yMin: 0.10, yMax: 0.85 };
+          // RTC: when hungry (>55), occasionally roam into mid-tank looking for food
+          if (f.species === 'rtcatfish' && f.hunger > 55 && Math.random() < 0.35) {
+            z = { yMin: 0.30, yMax: 0.92 };
+          }
           f.targetY = H * z.yMin + Math.random() * H * (z.yMax - z.yMin);
           if (Math.random() < 0.25) f.vx = -f.vx;
         }
@@ -303,9 +389,10 @@
       }
 
       f.vx += (desiredVx - f.vx) * Math.min(1, dt * 2);
-      f.vy += (desiredVy - f.vy) * Math.min(1, dt * 1.5);  // slower vy blend = smoother depth
-      if (f.species === 'arowana') f.vy *= 0.72;  // keep arowana gliding horizontally
-      if (f.species === 'pleco')   f.vy *= 0.30;  // pleco hugs the bottom
+      f.vy += (desiredVy - f.vy) * Math.min(1, dt * 1.5);
+      if (f.species === 'arowana')  f.vy *= 0.72;  // glide horizontally at surface
+      if (f.species === 'pleco')    f.vy *= 0.30;  // hugs the bottom
+      if (f.species === 'rtcatfish') f.vy *= 0.45; // mostly bottom, occasional vertical drift
       f.x += f.vx * dt;
       f.y += f.vy * dt;
 
@@ -315,15 +402,8 @@
       const yMax = Math.min(H - 40, H * bz.yMax);
       if (f.x < margin)     { f.x = margin;     f.vx =  Math.abs(f.vx); }
       if (f.x > W - margin) { f.x = W - margin; f.vx = -Math.abs(f.vx); }
-      // Soft boundary: zero out vy and pick new interior targetY — no elastic bounce
-      if (f.y < yMin) {
-        f.y = yMin; f.vy = 0;
-        f.targetY = yMin + (yMax - yMin) * (0.2 + Math.random() * 0.5);
-      }
-      if (f.y > yMax) {
-        f.y = yMax; f.vy = 0;
-        f.targetY = yMin + (yMax - yMin) * (0.2 + Math.random() * 0.5);
-      }
+      if (f.y < yMin) { f.y = yMin; f.vy = 0; f.targetY = yMin + (yMax - yMin) * (0.2 + Math.random() * 0.5); }
+      if (f.y > yMax) { f.y = yMax; f.vy = 0; f.targetY = yMin + (yMax - yMin) * (0.2 + Math.random() * 0.5); }
     }
   }
 
@@ -402,6 +482,89 @@
       }
       ctx.restore();
     }
+  }
+
+  // Waste debris on gravel from uneaten food
+  function drawWaste() {
+    if (waste.length === 0) return;
+    ctx.save();
+    ctx.fillStyle = '#3a1a08';
+    for (const w of waste) {
+      ctx.globalAlpha = w.alpha * 0.55;
+      ctx.beginPath();
+      ctx.ellipse(w.x, H - 28 + w.oy, 3 + w.size, 1.2, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  // Day/Night overlay — based on real wall clock hour
+  function drawDayNight() {
+    const h = new Date().getHours();
+    let alpha = 0;
+    if (h >= 22 || h < 5)      alpha = 0.32;   // deep night
+    else if (h >= 20 || h < 7) alpha = 0.16;   // dusk / dawn
+    if (alpha === 0) return;
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = '#000d1a';
+    ctx.fillRect(0, 0, W, H);
+    if (h >= 22 || h < 5) {
+      ctx.globalAlpha = 0.06;
+      ctx.fillStyle = '#c8e0ff';
+      ctx.beginPath();
+      ctx.ellipse(W * 0.72, 0, W * 0.32, 55, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  // "!" hunger indicator above fish that are hungry
+  function drawHungerIndicators(t) {
+    ctx.save();
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    for (const f of fish) {
+      if (f.dead || f.hunger < 45) continue;
+      const urgent = f.hunger > 75;
+      if (Math.sin(t * (urgent ? 8 : 4)) < 0) continue;
+      ctx.font = urgent ? 'bold 15px sans-serif' : '13px sans-serif';
+      ctx.globalAlpha = 0.85;
+      ctx.fillStyle = urgent ? '#ff2020' : '#ff9900';
+      ctx.fillText('!', f.x, f.y - 52);
+    }
+    ctx.restore();
+  }
+
+  // Tooltip shown on fish click
+  function drawTooltip() {
+    if (!tooltipData) return;
+    const remaining = (tooltipData.expires - performance.now()) / 1000;
+    if (remaining <= 0) { tooltipData = null; return; }
+    const alpha = Math.min(1, remaining * 3) * 0.93;
+    const lines = tooltipData.lines;
+    const padX = 10, padY = 7, lineH = 17, w = 158;
+    const h = lines.length * lineH + padY * 2;
+    let tx = Math.min(tooltipData.x + 14, W - w - 8);
+    let ty = Math.max(tooltipData.y - h - 14, 8);
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = 'rgba(4,18,32,0.88)';
+    ctx.beginPath();
+    ctx.roundRect(tx, ty, w, h, 7);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.18)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    ctx.fillStyle = '#fff';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
+    lines.forEach((line, i) => {
+      ctx.font = i === 0 ? 'bold 12px sans-serif' : '11px sans-serif';
+      ctx.globalAlpha = i === 0 ? alpha : alpha * 0.82;
+      ctx.fillText(line, tx + padX, ty + padY + i * lineH);
+    });
+    ctx.restore();
   }
 
   function drawBubbles() {
@@ -949,7 +1112,9 @@
     ctx.translate(f.x, f.y + Math.sin(phase * 0.7) * 1.5);
     if (f.visualParams && f.visualParams.colorFilter) { ctx.filter = f.visualParams.colorFilter; }
     // facesLeft → original image has head-LEFT → scale(-dir) to swim correctly
-    ctx.scale(facesLeft ? -dir : dir, 1);
+    // growthScale applied here so body and tail both scale proportionally
+    const gs = f.growthScale || 1.0;
+    ctx.scale((facesLeft ? -dir : dir) * gs, gs);
     ctx.rotate(Math.atan2(f.vy, Math.abs(f.vx) + 0.01) * 0.2);
 
     if (facesLeft) {
@@ -998,8 +1163,24 @@
 
   function drawFish(f) {
     const def = SPRITE_SPECIES[f.species];
+
+    if (f.dead) {
+      ctx.save();
+      // Fade out over last 3 seconds of 8-second death animation
+      ctx.globalAlpha = f.deathTimer < 5 ? 1 : Math.max(0, 1 - (f.deathTimer - 5) / 3);
+      ctx.filter = 'grayscale(0.85) brightness(0.6)';
+      // Flip fish upside-down around its y centre
+      ctx.translate(f.x, f.y);
+      ctx.scale(1, -1);
+      ctx.translate(-f.x, -f.y);
+      if (def && SPRITES[def.sheet]) drawSpriteSheetFish(f);
+      else if (f.species === 'arowana') drawArowanaCanvas(f);
+      else drawGeneric(f);
+      ctx.restore();
+      return;
+    }
+
     if (def && SPRITES[def.sheet]) { drawSpriteSheetFish(f); return; }
-    // Canvas fallbacks (sprite not loaded yet)
     if (f.species === 'arowana') drawArowanaCanvas(f);
     else if (f.species === 'oscar') drawOscar(f);
     else drawGeneric(f);
@@ -1027,10 +1208,14 @@
   function render(t) {
     drawBackground(t);
     drawPlants(t);
+    drawWaste();
     drawBubbles();
     drawFood();
     for (const f of fish) drawFishShadow(f);
     for (const f of fish) drawFish(f);
+    drawHungerIndicators(t);
+    drawDayNight();
+    drawTooltip();
   }
 
   function loop(now) {
@@ -1060,15 +1245,44 @@
 
   canvas.addEventListener('click', (e) => {
     const rect = canvas.getBoundingClientRect();
-    dropFood(e.clientX - rect.left, e.clientY - rect.top);
+    const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+    // Click on a fish → show tooltip instead of dropping food
+    const hit = fish.find(f => !f.dead && Math.hypot(f.x - mx, f.y - my) < 45);
+    if (hit) {
+      const pref = (FOOD_PREFERENCE[hit.species] || []).map(t => `${t}`).join(', ') || 'any';
+      const moodStr = hit.hunger < 25 ? '😊 Happy' : hit.hunger < 50 ? '🙂 Content' : hit.hunger < 75 ? '😐 Hungry' : '😡 Starving!';
+      tooltipData = {
+        lines: [
+          SPECIES_LABEL[hit.species] || hit.species,
+          `Hunger: ${Math.round(hit.hunger)}%`,
+          `Size: ${Math.round(hit.growthScale * 100)}%`,
+          moodStr,
+          `Loves: ${pref}`,
+        ],
+        x: mx, y: my,
+        expires: performance.now() + 4000,
+      };
+      return;
+    }
+    dropFood(mx, my);
   });
+
   feedBtn.addEventListener('click', () => dropFood(W / 2, 20));
+
+  cleanBtn.addEventListener('click', () => {
+    if (cleanCooldown > 0) return;
+    waste.length = 0;
+    cleanCooldown = 300;  // 5-minute cooldown
+    cleanBtn.textContent = '🧹 Cleaned!';
+    setTimeout(() => { cleanBtn.textContent = '🧹 Clean'; }, 2000);
+  });
 
   window.addEventListener('message', (e) => {
     const msg = e.data;
     if (msg.type === 'state') {
       if (aquariumType !== msg.aquariumType) { bgCanvas = null; }  // rebake for new water type
       aquariumType = msg.aquariumType;
+      if (msg.coins) { coins = msg.coins; coinsLabel.textContent = `💰 ${coins}`; }
       rebuildFish(msg.fish || []);
     } else if (msg.type === 'feed') {
       dropFood(W / 2, 20);
