@@ -25,39 +25,77 @@ html, body {
   top: 10px;
   left: 12px;
   display: flex;
-  gap: 10px;
+  gap: 8px;
   align-items: center;
-  background: rgba(0, 0, 0, 0.35);
-  padding: 6px 12px;
-  border-radius: 18px;
-  backdrop-filter: blur(4px);
+  background: rgba(0, 0, 0, 0.40);
+  padding: 6px 14px;
+  border-radius: 20px;
+  backdrop-filter: blur(6px);
   font-size: 12px;
   pointer-events: auto;
   user-select: none;
 }
 
-#hud button {
-  background: rgba(255, 255, 255, 0.15);
+#hud #label,
+#hud #clockLabel,
+#hud #coinsLabel {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  opacity: 0.9;
+}
+
+#hud #clockLabel {
+  opacity: 0.75;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+}
+
+#hud button,
+.food-opt {
+  background: rgba(255, 255, 255, 0.12);
   color: #fff;
-  border: 1px solid rgba(255, 255, 255, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.22);
   border-radius: 12px;
   padding: 3px 10px;
   cursor: pointer;
   font-size: 12px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  transition: background 0.15s, border-color 0.15s;
 }
-#hud select {
-  background: rgba(255, 255, 255, 0.15);
-  color: #fff;
-  border: 1px solid rgba(255, 255, 255, 0.25);
-  border-radius: 12px;
-  padding: 3px 10px;
-  cursor: pointer;
-  font-size: 12px;
-  outline: none;
-  -webkit-appearance: none;
-  appearance: none;
+
+#hud button:hover,
+.food-opt:hover {
+  background: rgba(255, 255, 255, 0.22);
+  border-color: rgba(255, 255, 255, 0.4);
 }
-#hud select option {
-  background: #1a3a4a;
+
+/* Food type selector */
+#foodSelector {
+  display: flex;
+  gap: 3px;
+  align-items: center;
+}
+
+.food-opt {
+  padding: 3px 9px;
+  border-radius: 10px;
+  color: rgba(255, 255, 255, 0.55);
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+.food-opt.active {
+  background: rgba(80, 180, 255, 0.28);
   color: #fff;
+  border-color: rgba(80, 180, 255, 0.55);
+}
+
+/* HUD divider */
+#hud .sep {
+  width: 1px;
+  height: 16px;
+  background: rgba(255, 255, 255, 0.18);
+  border-radius: 1px;
 }

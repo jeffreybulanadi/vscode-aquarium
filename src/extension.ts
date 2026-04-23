@@ -189,13 +189,21 @@ function getHtml(context: vscode.ExtensionContext, webview: vscode.Webview): str
   const agUri = webview.asWebviewUri(
     vscode.Uri.file(path.join(context.extensionPath, 'media', 'ag.jpg'))
   );
-  const csp = `default-src 'none'; img-src ${webview.cspSource} data:; style-src ${webview.cspSource} 'unsafe-inline'; script-src 'nonce-${nonce}';`;
+  const fontawesomeUri = webview.asWebviewUri(
+    vscode.Uri.file(path.join(context.extensionPath, 'media', 'fontawesome.min.css'))
+  );
+  const faSolidUri = webview.asWebviewUri(
+    vscode.Uri.file(path.join(context.extensionPath, 'media', 'fa-solid.min.css'))
+  );
+  const csp = `default-src 'none'; img-src ${webview.cspSource} data:; style-src ${webview.cspSource} 'unsafe-inline'; font-src ${webview.cspSource}; script-src 'nonce-${nonce}';`;
   html = html
     .replace(/{{cspSource}}/g, webview.cspSource)
     .replace(/{{csp}}/g, csp)
     .replace(/{{nonce}}/g, nonce)
     .replace(/{{scriptUri}}/g, scriptUri.toString())
     .replace(/{{styleUri}}/g, styleUri.toString())
+    .replace(/{{fontawesomeUri}}/g, fontawesomeUri.toString())
+    .replace(/{{faSolidUri}}/g, faSolidUri.toString())
     .replace(/{{arowanaUri}}/g, arowanaUri.toString())
     .replace(/{{oscarUri}}/g, oscarUri.toString())
     .replace(/{{composite1Uri}}/g, composite1Uri.toString())

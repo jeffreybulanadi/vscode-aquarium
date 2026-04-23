@@ -7,7 +7,27 @@
   const feedBtn = document.getElementById('feedBtn');
   const cleanBtn = document.getElementById('cleanBtn');
   const coinsLabel = document.getElementById('coinsLabel');
-  const foodTypeSelect = document.getElementById('foodType');
+  const clockLabel = document.getElementById('clockLabel');
+
+  // Food selector — track which food is active
+  let currentFood = 'pellet';
+  document.querySelectorAll('.food-opt').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.food-opt').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      currentFood = btn.dataset.food;
+    });
+  });
+
+  // Live clock — update every second
+  function updateClock() {
+    const now = new Date();
+    const h = String(now.getHours()).padStart(2, '0');
+    const m = String(now.getMinutes()).padStart(2, '0');
+    clockLabel.innerHTML = `<i class="fa-solid fa-clock"></i> ${h}:${m}`;
+  }
+  updateClock();
+  setInterval(updateClock, 1000);
 
   let W = 0, H = 0;
   let aquariumType = 'freshwater';
@@ -261,8 +281,8 @@
       .filter(entry => entry.species === 'arowana' || !!SPRITE_SPECIES[entry.species])
       .map(entry => makeFish(entry.species, entry.colorVariant));
     fish.forEach(clampFish);
-    const type = aquariumType === 'saltwater' ? '🐠 Saltwater' : '🐟 Freshwater';
-    label.textContent = `${type} · ${fish.length} fish`;
+    const typeText = aquariumType === 'saltwater' ? 'Saltwater' : 'Freshwater';
+    label.innerHTML = `<i class="fa-solid fa-fish"></i> ${typeText} · ${fish.length} fish`;
   }
 
   // ---------- Update ----------
@@ -311,8 +331,8 @@
         f.tailPhase += dt * 1.5;
         if (f.deathTimer > 8) {
           fish.splice(i, 1);
-          const t2 = aquariumType === 'saltwater' ? '🐠 Saltwater' : '🐟 Freshwater';
-          label.textContent = `${t2} · ${fish.length} fish`;
+          const t2text = aquariumType === 'saltwater' ? 'Saltwater' : 'Freshwater';
+          label.innerHTML = `<i class="fa-solid fa-fish"></i> ${t2text} · ${fish.length} fish`;
           vscode.postMessage({ type: 'gameUpdate', coins, fishCount: fish.length });
         }
         continue;
@@ -362,7 +382,7 @@
           f.hunger = Math.max(0, f.hunger - hungerRestore);
           f.growthScale = Math.min(1.5, f.growthScale + 0.003);
           coins += coinEarn;
-          coinsLabel.textContent = `💰 ${coins}`;
+          coinsLabel.innerHTML = `<i class="fa-solid fa-coins"></i> ${coins}`;
           pellets.splice(pellets.indexOf(f.target), 1);
           f.target = null;
           f.mood = 'wander';
@@ -1228,7 +1248,7 @@
 
   // ---------- Interaction ----------
   function dropFood(x, y, type) {
-    const foodType = type || (foodTypeSelect ? foodTypeSelect.value : 'pellet');
+    const foodType = type || currentFood || 'pellet';
     const count = foodType === 'superworm' ? 3 : foodType === 'cricket' ? 4 : 6;
     for (let i = 0; i < count; i++) {
       pellets.push({
@@ -1273,8 +1293,8 @@
     if (cleanCooldown > 0) return;
     waste.length = 0;
     cleanCooldown = 300;  // 5-minute cooldown
-    cleanBtn.textContent = '🧹 Cleaned!';
-    setTimeout(() => { cleanBtn.textContent = '🧹 Clean'; }, 2000);
+    cleanBtn.innerHTML = '<i class="fa-solid fa-broom"></i> Cleaned!';
+    setTimeout(() => { cleanBtn.innerHTML = '<i class="fa-solid fa-broom"></i> Clean'; }, 2000);
   });
 
   window.addEventListener('message', (e) => {
@@ -1282,7 +1302,7 @@
     if (msg.type === 'state') {
       if (aquariumType !== msg.aquariumType) { bgCanvas = null; }  // rebake for new water type
       aquariumType = msg.aquariumType;
-      if (msg.coins) { coins = msg.coins; coinsLabel.textContent = `💰 ${coins}`; }
+      if (msg.coins) { coins = msg.coins; coinsLabel.innerHTML = `<i class="fa-solid fa-coins"></i> ${coins}`; }
       rebuildFish(msg.fish || []);
     } else if (msg.type === 'feed') {
       dropFood(W / 2, 20);

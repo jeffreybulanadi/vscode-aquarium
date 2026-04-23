@@ -3,6 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta http-equiv="Content-Security-Policy" content="{{csp}}" />
+  <link rel="stylesheet" href="{{fontawesomeUri}}" />
+  <link rel="stylesheet" href="{{faSolidUri}}" />
   <link rel="stylesheet" href="{{styleUri}}" />
   <title>Aquarium</title>
 </head>
@@ -10,16 +12,17 @@
   <div id="tank">
     <canvas id="aquarium"></canvas>
     <div id="hud">
-      <span id="label">🐟 Freshwater Aquarium</span>
-      <select id="foodType" title="Food type">
-        <option value="pellet">🟤 Pellet</option>
-        <option value="superworm">🪱 Superworm</option>
-        <option value="cricket">🦗 Cricket</option>
-        <option value="shrimp">🍤 Shrimp</option>
-      </select>
-      <button id="feedBtn" title="Drop food">🍽️ Feed</button>
-      <button id="cleanBtn" title="Clean tank (5 min cooldown)">🧹 Clean</button>
-      <span id="coinsLabel">💰 0</span>
+      <span id="label"><i class="fa-solid fa-fish"></i> Freshwater · 0 fish</span>
+      <span id="clockLabel"><i class="fa-solid fa-clock"></i> 00:00</span>
+      <div id="foodSelector">
+        <button class="food-opt active" data-food="pellet"    title="Pellet"><i class="fa-solid fa-circle-dot"></i></button>
+        <button class="food-opt"        data-food="superworm" title="Superworm"><i class="fa-solid fa-worm"></i></button>
+        <button class="food-opt"        data-food="cricket"   title="Cricket"><i class="fa-solid fa-bug"></i></button>
+        <button class="food-opt"        data-food="shrimp"    title="Shrimp"><i class="fa-solid fa-shrimp"></i></button>
+      </div>
+      <button id="feedBtn"  title="Drop food"><i class="fa-solid fa-utensils"></i> Feed</button>
+      <button id="cleanBtn" title="Clean tank (5 min cooldown)"><i class="fa-solid fa-broom"></i> Clean</button>
+      <span id="coinsLabel"><i class="fa-solid fa-coins"></i> 0</span>
     </div>
   </div>
   <script nonce="{{nonce}}">window.FISH_ASSETS={arowana:'{{arowanaUri}}',oscar:'{{oscarUri}}',composite1:'{{composite1Uri}}',composite2:'{{composite2Uri}}',rtc:'{{rtcUri}}',flowerhorn:'{{flowerHornUri}}',ag:'{{agUri}}'};</script>
