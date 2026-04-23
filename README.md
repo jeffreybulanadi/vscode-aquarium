@@ -1,5 +1,9 @@
 # VSCode Aquarium
 
+<p align="center">
+  <img src="screenshots/preview.png" alt="VSCode Aquarium" width="800" />
+</p>
+
 A living, breathing aquarium in your VS Code editor. Watch carefully rendered fish swim, eat, grow, and thrive while you code. Real-time game mechanics: hunger, feeding, waste management, day/night cycles, and more.
 
 Inspired by vscode-pets, but with full ecological simulation and beautiful sprite-based fish.
