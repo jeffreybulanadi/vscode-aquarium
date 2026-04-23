@@ -2,12 +2,12 @@ import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
 
-const FRESHWATER_SPECIES = ['arowana', 'oscar', 'snakehead', 'peacockbass', 'axolotl', 'alligatorgar', 'rtcatfish', 'pleco', 'flowerhorn'];
+const FRESHWATER_SPECIES = ['arowana', 'oscar', 'snakehead', 'peacockbass', 'alligatorgar', 'rtcatfish', 'pleco', 'flowerhorn'];
 const SALTWATER_SPECIES = ['clownfish', 'tang', 'lionfish', 'angel-marine', 'pufferfish'];
 
 const SPECIES_LABELS: Record<string, string> = {
   arowana: 'Arowana', oscar: 'Oscar Cichlid', snakehead: 'Snakehead',
-  peacockbass: 'Peacock Bass', axolotl: 'Axolotl', alligatorgar: 'Alligator Gar',
+  peacockbass: 'Peacock Bass', alligatorgar: 'Alligator Gar',
   rtcatfish: 'Red-Tailed Catfish', pleco: 'Pleco', flowerhorn: 'Flowerhorn Cichlid',
   goldfish: 'Goldfish', guppy: 'Guppy', angelfish: 'Angelfish', betta: 'Betta',
   clownfish: 'Clownfish', tang: 'Tang', lionfish: 'Lionfish', 'angel-marine': 'Marine Angel', pufferfish: 'Pufferfish'
@@ -18,7 +18,6 @@ const SPECIES_COLOR_VARIANTS_EXT: Record<string, string[]> = {
   oscar:        ['tiger', 'red', 'albino'],
   snakehead:    ['olive', 'giant', 'rainbow'],
   peacockbass:  ['speckled', 'butterfly', 'mono'],
-  axolotl:      ['leucistic', 'wild', 'golden', 'melanoid'],
   alligatorgar: ['olive', 'spotted', 'albino'],
   rtcatfish:    ['natural', 'albino'],
   pleco:        ['common', 'royal', 'goldnugget'],

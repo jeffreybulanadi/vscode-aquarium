@@ -79,14 +79,13 @@
   // fx/fy/fw/fh are fractions of the source sprite canvas (0-1)
   // facesLeft: head is at LEFT of image (need scale(-dir,1)); else head at RIGHT
   const SPRITE_SPECIES = {
-    oscar:        { sheet: 'oscar',      fx: 0,        fy: 0,        fw: 1,        fh: 1,        targetW: 95,  targetH: 76,  facesLeft: false, tailRatio: 0.20 },
-    snakehead:    { sheet: 'composite1', fx: 45/1339,  fy: 8/784,    fw: 1250/1339,fh: 248/784,  targetW: 130, targetH: 34,  facesLeft: false, tailRatio: 0.22 },
-    peacockbass:  { sheet: 'composite1', fx: 65/1339,  fy: 278/784,  fw: 1240/1339,fh: 255/784,  targetW: 108, targetH: 64,  facesLeft: false, tailRatio: 0.22 },
-    axolotl:      { sheet: 'composite1', fx: 20/1339,  fy: 548/784,  fw: 1100/1339,fh: 230/784,  targetW: 82,  targetH: 44,  facesLeft: false, tailRatio: 0.15 },
-    alligatorgar: { sheet: 'ag',        fx: 0,        fy: 0,        fw: 1,        fh: 1,        targetW: 175, targetH: 45,  facesLeft: false, tailRatio: 0.22 },
-    rtcatfish:    { sheet: 'rtc',        fx: 0,        fy: 0,        fw: 1,        fh: 1,        targetW: 120, targetH: 62,  facesLeft: false, tailRatio: 0.25 },
-    pleco:        { sheet: 'composite2', fx: 115/1339, fy: 540/784,  fw: 975/1339, fh: 242/784,  targetW: 90,  targetH: 48,  facesLeft: false, tailRatio: 0.18 },
-    flowerhorn:   { sheet: 'flowerhorn', fx: 0,        fy: 0,        fw: 1,        fh: 1,        targetW: 105, targetH: 88,  facesLeft: true,  tailRatio: 0.22 },
+    oscar:        { sheet: 'oscar',      fx: 0,        fy: 0,        fw: 1,        fh: 1,        targetH: 76,  facesLeft: false, tailRatio: 0.20 },
+    snakehead:    { sheet: 'composite1', fx: 45/1339,  fy: 8/784,    fw: 1250/1339,fh: 248/784,  targetH: 34,  facesLeft: false, tailRatio: 0.22 },
+    peacockbass:  { sheet: 'composite1', fx: 65/1339,  fy: 278/784,  fw: 1240/1339,fh: 255/784,  targetH: 64,  facesLeft: false, tailRatio: 0.22 },
+    alligatorgar: { sheet: 'ag',         fx: 0,        fy: 0,        fw: 1,        fh: 1,        targetH: 70,  facesLeft: false, tailRatio: 0.22 },
+    rtcatfish:    { sheet: 'rtc',        fx: 0,        fy: 0,        fw: 1,        fh: 1,        targetH: 62,  facesLeft: false, tailRatio: 0.25 },
+    pleco:        { sheet: 'composite2', fx: 115/1339, fy: 540/784,  fw: 975/1339, fh: 242/784,  targetH: 48,  facesLeft: false, tailRatio: 0.18 },
+    flowerhorn:   { sheet: 'flowerhorn', fx: 0,        fy: 0,        fw: 1,        fh: 1,        targetH: 88,  facesLeft: true,  tailRatio: 0.22 },
   };
 
   // Color variants per species — CSS filter strings
@@ -104,10 +103,6 @@
     peacockbass:  [{ id: 'speckled',  filter: '' },
                    { id: 'butterfly', filter: 'hue-rotate(22deg) saturate(1.4)' },
                    { id: 'mono',      filter: 'saturate(0.25) brightness(1.1)' }],
-    axolotl:      [{ id: 'leucistic', filter: '' },
-                   { id: 'wild',      filter: 'hue-rotate(40deg) saturate(2) brightness(0.82)' },
-                   { id: 'golden',    filter: 'sepia(0.55) saturate(2.2) brightness(1.1)' },
-                   { id: 'melanoid',  filter: 'brightness(0.28) saturate(0.4)' }],
     alligatorgar: [{ id: 'olive',     filter: '' },
                    { id: 'spotted',   filter: 'hue-rotate(15deg) contrast(1.25)' },
                    { id: 'albino',    filter: 'sepia(0.35) brightness(1.6) saturate(0.4)' }],
@@ -131,7 +126,6 @@
     oscar:        { yMin: 0.15, yMax: 0.75 },
     rtcatfish:    { yMin: 0.20, yMax: 0.82 },
     flowerhorn:   { yMin: 0.18, yMax: 0.78 },
-    axolotl:      { yMin: 0.55, yMax: 0.92 },
     pleco:        { yMin: 0.90, yMax: 0.97 },
   };
 
@@ -139,7 +133,7 @@
   const SPECIES_SPEED = {
     peacockbass: 45, arowana: 35, snakehead: 30,
     oscar: 22, rtcatfish: 22, alligatorgar: 22, flowerhorn: 18,
-    axolotl: 12, pleco: 8,
+    pleco: 8,
   };
 
   // ---------- Resize ----------
@@ -305,11 +299,11 @@
         const spd = SPECIES_SPEED[f.species] || 25;
         const baseSpeed = spd + Math.sin(performance.now() / 1500 + f.tailPhase) * spd * 0.3;
         desiredVx = Math.sign(f.vx || 1) * baseSpeed;
-        desiredVy = (f.targetY - f.y) * 0.6;
+        desiredVy = (f.targetY - f.y) * 0.3;  // softer vertical pull — reduces overshoot/bounce
       }
 
       f.vx += (desiredVx - f.vx) * Math.min(1, dt * 2);
-      f.vy += (desiredVy - f.vy) * Math.min(1, dt * 2);
+      f.vy += (desiredVy - f.vy) * Math.min(1, dt * 1.5);  // slower vy blend = smoother depth
       if (f.species === 'arowana') f.vy *= 0.72;  // keep arowana gliding horizontally
       if (f.species === 'pleco')   f.vy *= 0.30;  // pleco hugs the bottom
       f.x += f.vx * dt;
@@ -321,8 +315,15 @@
       const yMax = Math.min(H - 40, H * bz.yMax);
       if (f.x < margin)     { f.x = margin;     f.vx =  Math.abs(f.vx); }
       if (f.x > W - margin) { f.x = W - margin; f.vx = -Math.abs(f.vx); }
-      if (f.y < yMin)       { f.y = yMin;        f.vy =  Math.abs(f.vy); }
-      if (f.y > yMax)       { f.y = yMax;        f.vy = -Math.abs(f.vy); }
+      // Soft boundary: zero out vy and pick new interior targetY — no elastic bounce
+      if (f.y < yMin) {
+        f.y = yMin; f.vy = 0;
+        f.targetY = yMin + (yMax - yMin) * (0.2 + Math.random() * 0.5);
+      }
+      if (f.y > yMax) {
+        f.y = yMax; f.vy = 0;
+        f.targetY = yMin + (yMax - yMin) * (0.2 + Math.random() * 0.5);
+      }
     }
   }
 
@@ -873,13 +874,16 @@
 
     const phase = f.tailPhase;
     const dir   = f.vx >= 0 ? 1 : -1;
-    const { targetW, targetH, tailRatio, facesLeft } = def;
-    const tailW  = targetW * tailRatio;
-    const OVERLAP = 7;
+    const { targetH, tailRatio, facesLeft } = def;
 
     // Pixel crop from the source sheet
     const sx = def.fx * sprite.width,  sy = def.fy * sprite.height;
     const sw = def.fw * sprite.width,  sh = def.fh * sprite.height;
+
+    // Derive targetW from real sprite aspect ratio — preserves proportions correctly
+    const targetW = targetH * (sw / sh);
+    const tailW   = targetW * tailRatio;
+    const OVERLAP = 7;
 
     ctx.save();
     ctx.translate(f.x, f.y + Math.sin(phase * 0.7) * 1.5);
