@@ -45,6 +45,19 @@ html, body {
   cursor: pointer;
   font-size: 12px;
 }
-#hud button:hover {
-  background: rgba(255, 255, 255, 0.28);
+#hud select {
+  background: rgba(255, 255, 255, 0.15);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 12px;
+  padding: 3px 10px;
+  cursor: pointer;
+  font-size: 12px;
+  outline: none;
+  -webkit-appearance: none;
+  appearance: none;
+}
+#hud select option {
+  background: #1a3a4a;
+  color: #fff;
 }

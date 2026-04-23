@@ -10,6 +10,7 @@
   let W = 0, H = 0;
   let aquariumType = 'freshwater';
   let fish = [];
+  let bgCanvas = null;
   const bubbles = [];
   const plants = [];
   const pellets = [];
@@ -39,30 +40,8 @@
     return oc;
   }
 
-  // Chroma-key removal: samples background from four corners, strips matching pixels
-  function removeColorBackground(img, tolerance) {
-    tolerance = tolerance || 55;
-    const oc = document.createElement('canvas');
-    oc.width = img.naturalWidth; oc.height = img.naturalHeight;
-    const oc2 = oc.getContext('2d');
-    oc2.drawImage(img, 0, 0);
-    const id = oc2.getImageData(0, 0, oc.width, oc.height);
-    const d = id.data;
-    const w = oc.width, h = oc.height;
-    const corners = [0, (w-1)*4, (h-1)*w*4, ((h-1)*w + w-1)*4];
-    let bgR = 0, bgG = 0, bgB = 0;
-    for (const c of corners) { bgR += d[c]; bgG += d[c+1]; bgB += d[c+2]; }
-    bgR = Math.round(bgR/4); bgG = Math.round(bgG/4); bgB = Math.round(bgB/4);
-    for (let i = 0; i < d.length; i += 4) {
-      const dr = d[i]-bgR, dg = d[i+1]-bgG, db = d[i+2]-bgB;
-      const dist = Math.sqrt(dr*dr + dg*dg + db*db);
-      if (dist < tolerance) {
-        d[i+3] = dist < tolerance*0.5 ? 0 : Math.round(((dist - tolerance*0.5)/(tolerance*0.5))*255);
-      }
-    }
-    oc2.putImageData(id, 0, 0);
-    return oc;
-  }
+  // Chroma-key removal (dead code preserved for future use — not called in runtime)
+  // function removeColorBackground(img, tolerance) { ... }
 
   function loadSprites() {
     const assets = window.FISH_ASSETS || {};
@@ -80,7 +59,8 @@
   // fx/fy/fw/fh are fractions of the source sprite canvas (0-1)
   // facesLeft: head is at LEFT of image (need scale(-dir,1)); else head at RIGHT
   const SPRITE_SPECIES = {
-    oscar:        { sheet: 'oscar',      fx: 0,        fy: 0,        fw: 1,        fh: 1,        targetH: 76,  facesLeft: false, tailRatio: 0.20 },
+    arowana:      { sheet: 'arowana',    fx: 0,        fy: 0,        fw: 1,        fh: 1,        targetH: 160, facesLeft: true,  tailRatio: 0.22 },
+    oscar:        { sheet: 'oscar',fx: 0,        fy: 0,        fw: 1,        fh: 1,        targetH: 76,  facesLeft: false, tailRatio: 0.20 },
     snakehead:    { sheet: 'composite1', fx: 45/1339,  fy: 8/784,    fw: 1250/1339,fh: 248/784,  targetH: 34,  facesLeft: false, tailRatio: 0.22 },
     peacockbass:  { sheet: 'composite1', fx: 65/1339,  fy: 278/784,  fw: 1240/1339,fh: 255/784,  targetH: 64,  facesLeft: false, tailRatio: 0.22 },
     alligatorgar: { sheet: 'ag',         fx: 0,        fy: 0,        fw: 1,        fh: 1,        targetH: 140, facesLeft: false, tailRatio: 0.22 },
@@ -121,7 +101,7 @@
   // Y zone fractions (fraction of canvas height) — controls vertical swim territory
   const SPECIES_ZONE = {
     alligatorgar: { yMin: 0.08, yMax: 0.55 },
-    arowana:      { yMin: 0.18, yMax: 0.32 },
+    arowana:      { yMin: 0.22, yMax: 0.34 },
     snakehead:    { yMin: 0.08, yMax: 0.52 },
     peacockbass:  { yMin: 0.15, yMax: 0.75 },
     oscar:        { yMin: 0.15, yMax: 0.75 },
@@ -145,6 +125,7 @@
     canvas.width = Math.floor(W * DPR);
     canvas.height = Math.floor(H * DPR);
     ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    bgCanvas = null;  // invalidate baked background on resize
     seedPlants();
     fish.forEach(clampFish);
   }
@@ -166,6 +147,12 @@
         bladeOffsets: Array.from({length: numBlades}, (_, b) => (b - numBlades/2 + 0.5) * 9 + (Math.random()-0.5)*4),
         bladePhases:  Array.from({length: numBlades}, () => Math.random() * Math.PI * 2),
         bladeHeights: Array.from({length: numBlades}, () => 0.55 + Math.random() * 0.45),
+        // Pre-cache gradient color strings — avoids template literal per blade per frame
+        stopColors: [
+          `hsl(${hue - 8},52%,13%)`,
+          `hsl(${hue},65%,26%)`,
+          `hsl(${hue + 10},73%,38%)`,
+        ],
       });
     }
   }
@@ -239,11 +226,13 @@
       .filter(entry => entry.species === 'arowana' || !!SPRITE_SPECIES[entry.species])
       .map(entry => makeFish(entry.species, entry.colorVariant));
     fish.forEach(clampFish);
+    const type = aquariumType === 'saltwater' ? '🐠 Saltwater' : '🐟 Freshwater';
+    label.textContent = `${type} · ${fish.length} fish`;
   }
 
   // ---------- Update ----------
   function update(dt) {
-    if (Math.random() < dt * 2.5) spawnBubble();
+    if (Math.random() < dt * 5) spawnBubble();
     for (let i = bubbles.length - 1; i >= 0; i--) {
       const b = bubbles[i];
       b.y += b.vy * dt;
@@ -255,9 +244,17 @@
       const p = pellets[i];
       p.vy = Math.min(p.vy + 30 * dt, 40);
       p.y += p.vy * dt;
-      p.life -= dt;
-      if (p.y >= H - 30) { p.y = H - 30; p.vy = 0; }
-      if (p.life <= 0) pellets.splice(i, 1);
+      if (p.y >= H - 30) {
+        p.y = H - 30;
+        p.vy = 0;
+        // Food resting on floor: use a slower decay so it persists longer
+        if (!p.resting) { p.resting = true; p.restLife = 60; }
+        p.restLife -= dt;
+        if (p.restLife <= 0) pellets.splice(i, 1);
+      } else {
+        p.life -= dt;
+        if (p.life <= 0) pellets.splice(i, 1);
+      }
     }
 
     for (const f of fish) {
@@ -300,7 +297,9 @@
         const spd = SPECIES_SPEED[f.species] || 25;
         const baseSpeed = spd + Math.sin(performance.now() / 1500 + f.tailPhase) * spd * 0.3;
         desiredVx = Math.sign(f.vx || 1) * baseSpeed;
-        desiredVy = (f.targetY - f.y) * 0.3;  // softer vertical pull — reduces overshoot/bounce
+        // Organic vertical weave: gentle sine tied to tail phase
+        const weave = Math.sin(f.tailPhase * 0.4) * baseSpeed * 0.06;
+        desiredVy = (f.targetY - f.y) * 0.3 + weave;
       }
 
       f.vx += (desiredVx - f.vx) * Math.min(1, dt * 2);
@@ -329,18 +328,40 @@
   }
 
   // ---------- Background ----------
-  function drawBackground(t) {
-    const grad = ctx.createLinearGradient(0, 0, 0, H);
+  // Bakes static gradient + gravel to an offscreen canvas once per resize/type-change.
+  // Each frame we just blit it, then layer the animated shimmer on top.
+  function prebakeBackground() {
+    bgCanvas = document.createElement('canvas');
+    bgCanvas.width = W; bgCanvas.height = H;
+    const bc = bgCanvas.getContext('2d');
+
+    const grad = bc.createLinearGradient(0, 0, 0, H);
     if (aquariumType === 'saltwater') {
       grad.addColorStop(0, '#0a3a78'); grad.addColorStop(0.5, '#0a5a9a'); grad.addColorStop(1, '#063060');
     } else {
       grad.addColorStop(0, '#1a6a78'); grad.addColorStop(0.5, '#1f8896'); grad.addColorStop(1, '#0e4858');
     }
-    ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, W, H);
+    bc.fillStyle = grad;
+    bc.fillRect(0, 0, W, H);
 
+    const gravelH = 28;
+    bc.fillStyle = aquariumType === 'saltwater' ? '#c8b884' : '#3a2a1a';
+    bc.fillRect(0, H - gravelH, W, gravelH);
+    bc.fillStyle = aquariumType === 'saltwater' ? '#b09860' : '#5a3a22';
+    for (let i = 0; i < W; i += 8) {
+      bc.beginPath();
+      bc.arc(i + (i % 16 ? 0 : 4), H - gravelH + 4 + (i % 7), 3, 0, Math.PI * 2);
+      bc.fill();
+    }
+  }
+
+  function drawBackground(t) {
+    if (!bgCanvas) prebakeBackground();
+    ctx.drawImage(bgCanvas, 0, 0);
+
+    // Animated light shimmer — cheap, no GC, drawn on top of baked base
     ctx.save();
-    ctx.globalAlpha = 0.1;
+    ctx.globalAlpha = 0.09;
     ctx.fillStyle = '#ffffff';
     for (let i = 0; i < 6; i++) {
       const x = ((t * 30 + i * 220) % (W + 200)) - 100;
@@ -349,23 +370,12 @@
       ctx.fill();
     }
     ctx.restore();
-
-    const gravelH = 28;
-    ctx.fillStyle = aquariumType === 'saltwater' ? '#c8b884' : '#3a2a1a';
-    ctx.fillRect(0, H - gravelH, W, gravelH);
-    ctx.fillStyle = aquariumType === 'saltwater' ? '#b09860' : '#5a3a22';
-    for (let i = 0; i < W; i += 8) {
-      ctx.beginPath();
-      ctx.arc(i + (i % 16 ? 0 : 4), H - gravelH + 4 + (i % 7), 3, 0, Math.PI * 2);
-      ctx.fill();
-    }
   }
 
-  // Filled bezier blade plants with gradient — much nicer than stroke-only
   function drawPlants(t) {
     for (const p of plants) {
       ctx.save();
-      ctx.translate(p.x, H - 28); // sit on top of gravel
+      ctx.translate(p.x, H - 28);
       const master = Math.sin(t * 1.2 + p.sway);
       for (let b = 0; b < p.blades; b++) {
         const ox = p.bladeOffsets[b];
@@ -376,10 +386,11 @@
         const cx2 = tx - sw * h * 0.08, cy2 = -h * 0.72;
         const hw  = Math.max(1.5, 4.2 - Math.abs(ox) * 0.05);
 
+        // Re-use cached stop color strings — no template literals / GC per blade
         const grad = ctx.createLinearGradient(ox, 0, tx, ty);
-        grad.addColorStop(0,   `hsl(${p.hue - 8}, 52%, 13%)`);
-        grad.addColorStop(0.5, `hsl(${p.hue},     65%, 26%)`);
-        grad.addColorStop(1,   `hsl(${p.hue + 10},73%, 38%)`);
+        grad.addColorStop(0,   p.stopColors[0]);
+        grad.addColorStop(0.5, p.stopColors[1]);
+        grad.addColorStop(1,   p.stopColors[2]);
 
         ctx.beginPath();
         ctx.moveTo(ox - hw, -1);
@@ -408,10 +419,11 @@
   }
 
   function drawFood() {
+    const now = performance.now() / 600;  // hoist outside per-item loop
     for (const p of pellets) {
       ctx.save();
       ctx.translate(p.x, p.y);
-      const w = p.wiggle + (performance.now() / 600);
+      const w = p.wiggle + now;
       const type = p.type || 'pellet';
 
       if (type === 'pellet') {
@@ -523,66 +535,8 @@
     }
   }
 
-  // ===================== AROWANA =====================
-  // Uses PNG sprite when loaded; canvas fallback otherwise.
-  // Sprite faces LEFT in image → scale(-dir,1) to orient correctly.
-  // Tail (rightmost ~22% of image) is animated separately on a pivot.
-  function drawArowana(f) {
-    if (SPRITES.arowana) {
-      drawArowanaSprite(f);
-    } else {
-      drawArowanaCanvas(f);
-    }
-  }
-
-  function drawArowanaSprite(f) {
-    const sprite = SPRITES.arowana;
-    const phase = f.tailPhase;
-    const dir = f.vx >= 0 ? 1 : -1;
-
-    // Scale sprite to ~160px tall (2× previous), preserving aspect ratio
-    const targetH = 160;
-    const targetW = (sprite.width / sprite.height) * targetH;
-
-    // Tail occupies rightmost 22% of the original image
-    const TAIL_RATIO = 0.22;
-    const tailW = targetW * TAIL_RATIO;
-    // Pivot x in local (pre-flip) coords — right edge of body
-    const pivotX = targetW / 2 - tailW;
-
-    ctx.save();
-    // Apply color variant filter
-    if (f.visualParams && f.visualParams.colorFilter) { ctx.filter = f.visualParams.colorFilter; }
-    // Subtle vertical bob
-    ctx.translate(f.x, f.y + Math.sin(phase * 0.7) * 2);
-    // Flip so fish faces swim direction (original image faces LEFT)
-    ctx.scale(-dir, 1);
-    // Tilt body slightly based on vertical velocity
-    ctx.rotate(Math.atan2(f.vy, Math.abs(f.vx) + 0.01) * 0.2);
-
-    // — Body portion (everything except tail) —
-    ctx.save();
-    ctx.beginPath();
-    ctx.rect(-targetW / 2, -targetH / 2 - 4, targetW - tailW + 6, targetH + 8);
-    ctx.clip();
-    ctx.drawImage(sprite, -targetW / 2, -targetH / 2, targetW, targetH);
-    ctx.restore();
-
-    // — Tail fin (animated around pivot) —
-    ctx.save();
-    ctx.translate(pivotX, 0);
-    ctx.rotate(Math.sin(phase) * 0.22);   // tail wag
-    ctx.translate(-pivotX, 0);
-    ctx.beginPath();
-    ctx.rect(pivotX - 6, -targetH / 2 - 4, tailW + 6, targetH + 8);
-    ctx.clip();
-    ctx.drawImage(sprite, -targetW / 2, -targetH / 2, targetW, targetH);
-    ctx.restore();
-
-    ctx.restore();
-  }
-
-  // Canvas fallback (used before sprite loads)
+  // ===================== AROWANA CANVAS FALLBACK =====================
+  // Used before sprite loads. Sprite path handled via SPRITE_SPECIES.
   function drawArowanaCanvas(f) {
     const phase = f.tailPhase;
     const dir = f.vx >= 0 ? 1 : -1;
@@ -989,7 +943,7 @@
     // Derive targetW from real sprite aspect ratio — preserves proportions correctly
     const targetW = targetH * (sw / sh);
     const tailW   = targetW * tailRatio;
-    const OVERLAP = 7;
+    const OVERLAP = Math.max(5, Math.round(targetH * 0.06));
 
     ctx.save();
     ctx.translate(f.x, f.y + Math.sin(phase * 0.7) * 1.5);
@@ -1043,12 +997,31 @@
   }
 
   function drawFish(f) {
-    if (f.species === 'arowana') { drawArowana(f); return; }
     const def = SPRITE_SPECIES[f.species];
     if (def && SPRITES[def.sheet]) { drawSpriteSheetFish(f); return; }
     // Canvas fallbacks (sprite not loaded yet)
-    if (f.species === 'oscar') drawOscar(f);
+    if (f.species === 'arowana') drawArowanaCanvas(f);
+    else if (f.species === 'oscar') drawOscar(f);
     else drawGeneric(f);
+  }
+
+  // Soft elliptical shadow under each fish — depth cue
+  function drawFishShadow(f) {
+    const def = SPRITE_SPECIES[f.species];
+    const fishH = def ? def.targetH : 50;
+    const fishW = fishH * 2.2;
+    const floorY = H - 28;
+    const dist = floorY - f.y;
+    if (dist > H * 0.65) return;  // too far up — shadow invisible
+    const alpha = Math.max(0, 0.22 - dist / (H * 0.65) * 0.22);
+    const scaleX = Math.max(0.3, 1 - dist / (H * 0.55));
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = '#000';
+    ctx.beginPath();
+    ctx.ellipse(f.x, floorY - 2, fishW * 0.42 * scaleX, 5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
   }
 
   function render(t) {
@@ -1056,6 +1029,7 @@
     drawPlants(t);
     drawBubbles();
     drawFood();
+    for (const f of fish) drawFishShadow(f);
     for (const f of fish) drawFish(f);
   }
 
@@ -1093,8 +1067,8 @@
   window.addEventListener('message', (e) => {
     const msg = e.data;
     if (msg.type === 'state') {
+      if (aquariumType !== msg.aquariumType) { bgCanvas = null; }  // rebake for new water type
       aquariumType = msg.aquariumType;
-      label.textContent = aquariumType === 'saltwater' ? '🐠 Saltwater Aquarium' : '🐟 Freshwater Aquarium';
       rebuildFish(msg.fish || []);
     } else if (msg.type === 'feed') {
       dropFood(W / 2, 20);
