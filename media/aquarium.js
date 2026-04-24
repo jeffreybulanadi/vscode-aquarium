@@ -86,13 +86,17 @@
   // fx/fy/fw/fh are fractions of the source sprite canvas (0-1)
   // facesLeft: head is at LEFT of image (need scale(-dir,1)); else head at RIGHT
   const SPRITE_SPECIES = {
-    arowana:      { sheet: 'arowana',    fx: 0,        fy: 0,        fw: 1,        fh: 1,        targetH: 160, facesLeft: true,  tailRatio: 0.22 },
-    oscar:        { sheet: 'oscar',      fx: 0,        fy: 0,        fw: 1,        fh: 1,        targetH: 76,  facesLeft: false, tailRatio: 0.20 },
-    snakehead:    { sheet: 'composite1', fx: 45/1339,  fy: 8/784,    fw: 1250/1339,fh: 248/784,  targetH: 34,  facesLeft: false, tailRatio: 0.22 },
-    alligatorgar: { sheet: 'ag',         fx: 0,        fy: 0,        fw: 1,        fh: 1,        targetH: 140, facesLeft: false, tailRatio: 0.22 },
-    rtcatfish:    { sheet: 'rtc',        fx: 0,        fy: 0,        fw: 1,        fh: 1,        targetH: 124, facesLeft: false, tailRatio: 0.25 },
-    pleco:        { sheet: 'composite2', fx: 115/1339, fy: 540/784,  fw: 975/1339, fh: 242/784,  targetH: 48,  facesLeft: false, tailRatio: 0.18 },
-    flowerhorn:   { sheet: 'flowerhorn', fx: 0,        fy: 0,        fw: 1,        fh: 1,        targetH: 88,  facesLeft: true,  tailRatio: 0.22 },
+    arowana:      { sheet: 'arowana',      fx: 0,    fy: 0, fw: 1,    fh: 1, targetH: 160, facesLeft: true,  tailRatio: 0.22 },
+    oscar:        { sheet: 'oscar',        fx: 0,    fy: 0, fw: 1,    fh: 1, targetH: 76,  facesLeft: false, tailRatio: 0.20 },
+    snakehead:    { sheet: 'composite1',   fx: 45/1339, fy: 8/784, fw: 1250/1339, fh: 248/784, targetH: 34, facesLeft: false, tailRatio: 0.22 },
+    alligatorgar: { sheet: 'ag',           fx: 0,    fy: 0, fw: 1,    fh: 1, targetH: 140, facesLeft: false, tailRatio: 0.22 },
+    rtcatfish:    { sheet: 'rtc',          fx: 0,    fy: 0, fw: 1,    fh: 1, targetH: 124, facesLeft: false, tailRatio: 0.25 },
+    pleco:        { sheet: 'pleco',        fx: 0.13, fy: 0, fw: 0.87, fh: 1, targetH: 52,  facesLeft: true,  tailRatio: 0.20 },
+    flowerhorn:   { sheet: 'flowerhorn',   fx: 0,    fy: 0, fw: 1,    fh: 1, targetH: 88,  facesLeft: true,  tailRatio: 0.22 },
+    peacockbass:  { sheet: 'peacockbass',  fx: 0.13, fy: 0, fw: 0.87, fh: 1, targetH: 82,  facesLeft: true,  tailRatio: 0.22 },
+    knifefish:    { sheet: 'knifefish',    fx: 0.12, fy: 0, fw: 0.88, fh: 1, targetH: 64,  facesLeft: true,  tailRatio: 0.28 },
+    silverdollar: { sheet: 'silverdollar', fx: 0.13, fy: 0, fw: 0.87, fh: 1, targetH: 72,  facesLeft: true,  tailRatio: 0.20 },
+    giantgourami: { sheet: 'giantgourami', fx: 0.13, fy: 0, fw: 0.87, fh: 1, targetH: 88,  facesLeft: true,  tailRatio: 0.21 },
   };
 
   // Color variants per species — CSS filter strings
@@ -119,6 +123,18 @@
                    { id: 'golden',    filter: 'sepia(0.6) saturate(2.5) hue-rotate(10deg) brightness(1.1)' },
                    { id: 'kamfa',     filter: 'hue-rotate(200deg) saturate(1.4) brightness(0.9)' },
                    { id: 'blue',      filter: 'hue-rotate(160deg) saturate(1.8) brightness(0.95)' }],
+    peacockbass:  [{ id: 'natural',   filter: '' },
+                   { id: 'speckled',  filter: 'hue-rotate(20deg) saturate(1.4) contrast(1.1)' },
+                   { id: 'butterfly', filter: 'hue-rotate(-30deg) saturate(1.8) brightness(1.05)' }],
+    knifefish:    [{ id: 'natural',   filter: '' },
+                   { id: 'ghost',     filter: 'sepia(0.2) brightness(1.6) saturate(0.3)' },
+                   { id: 'dark',      filter: 'brightness(0.65) contrast(1.3)' }],
+    silverdollar: [{ id: 'silver',    filter: '' },
+                   { id: 'spotted',   filter: 'contrast(1.3) brightness(0.92)' },
+                   { id: 'red_hook',  filter: 'hue-rotate(-15deg) saturate(1.6) brightness(1.0)' }],
+    giantgourami: [{ id: 'natural',   filter: '' },
+                   { id: 'gold',      filter: 'sepia(0.7) saturate(2.8) hue-rotate(18deg) brightness(1.1)' },
+                   { id: 'albino',    filter: 'sepia(0.15) brightness(1.65) saturate(0.35)' }],
   };
 
   // Y zone fractions (fraction of canvas height) — controls vertical swim territory
@@ -130,12 +146,17 @@
     rtcatfish:    { yMin: 0.68, yMax: 0.92 },
     flowerhorn:   { yMin: 0.18, yMax: 0.78 },
     pleco:        { yMin: 0.90, yMax: 0.97 },
+    peacockbass:  { yMin: 0.15, yMax: 0.65 },
+    knifefish:    { yMin: 0.35, yMax: 0.82 },
+    silverdollar: { yMin: 0.20, yMax: 0.70 },
+    giantgourami: { yMin: 0.25, yMax: 0.75 },
   };
 
   // Base swim speeds (px/s) — differentiated per species behavior
   const SPECIES_SPEED = {
     arowana: 65, snakehead: 42,
     alligatorgar: 28, oscar: 22, flowerhorn: 18,
+    peacockbass: 35, knifefish: 28, silverdollar: 30, giantgourami: 12,
     rtcatfish: 14, pleco: 6,
   };
 
@@ -143,6 +164,7 @@
   const SPECIES_MID_AMP = {
     arowana: 0.09, snakehead: 0.10,
     alligatorgar: 0.04, oscar: 0.07, flowerhorn: 0.07,
+    peacockbass: 0.08, knifefish: 0.12, silverdollar: 0.06, giantgourami: 0.05,
     rtcatfish: 0.08, pleco: 0.03,
   };
 
@@ -151,6 +173,7 @@
   const HUNGER_DECAY = {
     arowana: 0.010, oscar: 0.013, snakehead: 0.011,
     alligatorgar: 0.008, rtcatfish: 0.010, pleco: 0.006, flowerhorn: 0.013,
+    peacockbass: 0.012, knifefish: 0.009, silverdollar: 0.010, giantgourami: 0.008,
   };
 
   // Preferred food per species — correct food earns +15 coins & more satiety
@@ -162,6 +185,10 @@
     rtcatfish:    ['superworm', 'pellet'],
     pleco:        ['pellet'],
     flowerhorn:   ['cricket', 'superworm'],
+    peacockbass:  ['shrimp', 'cricket'],
+    knifefish:    ['shrimp', 'superworm'],
+    silverdollar: ['pellet', 'cricket'],
+    giantgourami: ['pellet', 'superworm'],
   };
 
   // Friendly species names (shown in tooltip)
@@ -169,6 +196,8 @@
     arowana: 'Arowana', oscar: 'Oscar Cichlid', snakehead: 'Snakehead',
     alligatorgar: 'Alligator Gar',
     rtcatfish: 'Red-Tailed Catfish', pleco: 'Pleco', flowerhorn: 'Flowerhorn',
+    peacockbass: 'Peacock Bass', knifefish: 'Knifefish',
+    silverdollar: 'Silver Dollar', giantgourami: 'Giant Gourami',
   };
 
   // ---------- Resize ----------
