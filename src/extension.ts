@@ -228,11 +228,8 @@ function getHtml(context: vscode.ExtensionContext, webview: vscode.Webview): str
   const oscarUri = webview.asWebviewUri(
     vscode.Uri.file(path.join(context.extensionPath, 'media', 'oscar.jpg'))
   );
-  const composite1Uri = webview.asWebviewUri(
-    vscode.Uri.file(path.join(context.extensionPath, 'media', 'snakehead-peacockbass-axolotl.jpg'))
-  );
-  const composite2Uri = webview.asWebviewUri(
-    vscode.Uri.file(path.join(context.extensionPath, 'media', 'Untitled design.jpg'))
+  const snakeheadUri = webview.asWebviewUri(
+    vscode.Uri.file(path.join(context.extensionPath, 'media', 'snakehead.jpg'))
   );
   const rtcUri = webview.asWebviewUri(
     vscode.Uri.file(path.join(context.extensionPath, 'media', 'rtc.jpg'))
@@ -290,8 +287,7 @@ function getHtml(context: vscode.ExtensionContext, webview: vscode.Webview): str
     .replace(/{{faSolidUri}}/g, faSolidUri.toString())
     .replace(/{{arowanaUri}}/g, arowanaUri.toString())
     .replace(/{{oscarUri}}/g, oscarUri.toString())
-    .replace(/{{composite1Uri}}/g, composite1Uri.toString())
-    .replace(/{{composite2Uri}}/g, composite2Uri.toString())
+    .replace(/{{snakeheadUri}}/g, snakeheadUri.toString())
     .replace(/{{rtcUri}}/g, rtcUri.toString())
     .replace(/{{flowerHornUri}}/g, flowerHornUri.toString())
     .replace(/{{agUri}}/g, agUri.toString())
