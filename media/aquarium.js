@@ -86,9 +86,8 @@
   // facesLeft: head is at LEFT of image (need scale(-dir,1)); else head at RIGHT
   const SPRITE_SPECIES = {
     arowana:      { sheet: 'arowana',    fx: 0,        fy: 0,        fw: 1,        fh: 1,        targetH: 160, facesLeft: true,  tailRatio: 0.22 },
-    oscar:        { sheet: 'oscar',fx: 0,        fy: 0,        fw: 1,        fh: 1,        targetH: 76,  facesLeft: false, tailRatio: 0.20 },
+    oscar:        { sheet: 'oscar',      fx: 0,        fy: 0,        fw: 1,        fh: 1,        targetH: 76,  facesLeft: false, tailRatio: 0.20 },
     snakehead:    { sheet: 'composite1', fx: 45/1339,  fy: 8/784,    fw: 1250/1339,fh: 248/784,  targetH: 34,  facesLeft: false, tailRatio: 0.22 },
-    peacockbass:  { sheet: 'composite1', fx: 65/1339,  fy: 278/784,  fw: 1240/1339,fh: 255/784,  targetH: 64,  facesLeft: false, tailRatio: 0.22 },
     alligatorgar: { sheet: 'ag',         fx: 0,        fy: 0,        fw: 1,        fh: 1,        targetH: 140, facesLeft: false, tailRatio: 0.22 },
     rtcatfish:    { sheet: 'rtc',        fx: 0,        fy: 0,        fw: 1,        fh: 1,        targetH: 124, facesLeft: false, tailRatio: 0.25 },
     pleco:        { sheet: 'composite2', fx: 115/1339, fy: 540/784,  fw: 975/1339, fh: 242/784,  targetH: 48,  facesLeft: false, tailRatio: 0.18 },
@@ -99,7 +98,7 @@
   const SPECIES_COLOR_VARIANTS = {
     arowana:      [{ id: 'silver',    filter: '' },
                    { id: 'golden',    filter: 'sepia(0.8) saturate(2.2) hue-rotate(18deg) brightness(1.1)' },
-                   { id: 'red',       filter: 'sepia(1) saturate(3) hue-rotate(-20deg)' },
+                   { id: 'red',       filter: 'sepia(1) hue-rotate(-35deg) saturate(4.5) brightness(0.82)' },
                    { id: 'green',     filter: 'hue-rotate(60deg) saturate(1.6) brightness(0.9)' }],
     oscar:        [{ id: 'tiger',     filter: '' },
                    { id: 'red',       filter: 'hue-rotate(-20deg) saturate(1.8) brightness(1.05)' },
@@ -107,9 +106,6 @@
     snakehead:    [{ id: 'olive',     filter: '' },
                    { id: 'giant',     filter: 'hue-rotate(28deg) saturate(0.7) brightness(0.88)' },
                    { id: 'rainbow',   filter: 'hue-rotate(-40deg) saturate(2.2) brightness(1.05)' }],
-    peacockbass:  [{ id: 'speckled',  filter: '' },
-                   { id: 'butterfly', filter: 'hue-rotate(22deg) saturate(1.4)' },
-                   { id: 'mono',      filter: 'saturate(0.25) brightness(1.1)' }],
     alligatorgar: [{ id: 'olive',     filter: '' },
                    { id: 'spotted',   filter: 'hue-rotate(15deg) contrast(1.25)' },
                    { id: 'albino',    filter: 'sepia(0.35) brightness(1.6) saturate(0.4)' }],
@@ -129,7 +125,6 @@
     alligatorgar: { yMin: 0.08, yMax: 0.55 },
     arowana:      { yMin: 0.22, yMax: 0.34 },
     snakehead:    { yMin: 0.08, yMax: 0.52 },
-    peacockbass:  { yMin: 0.15, yMax: 0.75 },
     oscar:        { yMin: 0.15, yMax: 0.75 },
     rtcatfish:    { yMin: 0.68, yMax: 0.92 },
     flowerhorn:   { yMin: 0.18, yMax: 0.78 },
@@ -138,14 +133,14 @@
 
   // Base swim speeds (px/s) — differentiated per species behavior
   const SPECIES_SPEED = {
-    arowana: 65, peacockbass: 52, snakehead: 42,
+    arowana: 65, snakehead: 42,
     alligatorgar: 28, oscar: 22, flowerhorn: 18,
     rtcatfish: 14, pleco: 6,
   };
 
   // Mid-body undulation amplitude (radians) — higher = more flexible body wave
   const SPECIES_MID_AMP = {
-    arowana: 0.09, snakehead: 0.10, peacockbass: 0.08,
+    arowana: 0.09, snakehead: 0.10,
     alligatorgar: 0.04, oscar: 0.07, flowerhorn: 0.07,
     rtcatfish: 0.08, pleco: 0.03,
   };
@@ -153,7 +148,7 @@
   // Hunger decay rate (units/sec). Fish hunger 0→100 over time;
   // rates set so fish survive ~2-3 hrs without feeding before dying.
   const HUNGER_DECAY = {
-    arowana: 0.010, oscar: 0.013, snakehead: 0.011, peacockbass: 0.013,
+    arowana: 0.010, oscar: 0.013, snakehead: 0.011,
     alligatorgar: 0.008, rtcatfish: 0.010, pleco: 0.006, flowerhorn: 0.013,
   };
 
@@ -162,7 +157,6 @@
     arowana:      ['cricket', 'shrimp'],
     oscar:        ['cricket', 'superworm'],
     snakehead:    ['cricket', 'shrimp'],
-    peacockbass:  ['shrimp', 'superworm'],
     alligatorgar: ['superworm', 'shrimp'],
     rtcatfish:    ['superworm', 'pellet'],
     pleco:        ['pellet'],
@@ -172,7 +166,7 @@
   // Friendly species names (shown in tooltip)
   const SPECIES_LABEL = {
     arowana: 'Arowana', oscar: 'Oscar Cichlid', snakehead: 'Snakehead',
-    peacockbass: 'Peacock Bass', alligatorgar: 'Alligator Gar',
+    alligatorgar: 'Alligator Gar',
     rtcatfish: 'Red-Tailed Catfish', pleco: 'Pleco', flowerhorn: 'Flowerhorn',
   };
 

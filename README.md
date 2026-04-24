@@ -1,264 +1,237 @@
-# VSCode Aquarium
+# 🐟 VSCode Aquarium
 
-A living, breathing aquarium in your VS Code editor. Watch carefully rendered fish swim, eat, grow, and thrive while you code. Real-time game mechanics: hunger, feeding, waste management, day/night cycles, and more.
+> A living, breathing freshwater aquarium inside your VS Code editor — with real game mechanics, sprite-animated fish, and an ecological simulation that runs while you code.
 
-Inspired by vscode-pets, but with full ecological simulation and beautiful sprite-based fish.
+![VSCode Aquarium Preview](screenshots/preview.png)
 
-![BC Docker Manager Overview](screenshots/preview.png)
-
----
-
-## Features
-
-### Fish Species
-**Freshwater** (default):
-- Arowana, top swimmer, loves crickets and shrimp
-- Oscar Cichlid, mid-tank, preferred food: pellets
-- Snakehead, aggressive, opportunistic feeder
-- Peacock Bass, vibrant, mid-range swimmer
-- Alligator Gar, predatory, bottom explorer
-- Red-Tailed Catfish, bottom dweller, roams for food when hungry
-- Pleco, algae eater, stays on gravel
-- Flowerhorn, colorful cichlid, mid-tank
-
-**Saltwater** (toggle via command):
-- Clownfish, Tang, Lionfish, Marine Angel, Pufferfish (coming soon)
-
-### Game Mechanics
-- Hunger System: fish slowly starve (2-3 hours), feed them to keep them alive
-- Food Preferences: each species prefers certain foods (cricket, shrimp, superworm, pellet)
-- Feeding Behavior: hungry fish chase food, preferred food restores more hunger and earns more coins
-- Growth: fish grow larger (up to 50% max) as they eat, visible size increase
-- Death and Respawn: starving fish die (belly-up float to surface), respawn via Add Fish command
-- Waste Management: uneaten food leaves debris on gravel, use Clean Tank button (5-min cooldown)
-- Coins: earned by feeding fish, persistent across sessions
-- Day/Night Cycle: real wall-clock based, aquarium darkens 20:00-07:00 with moon shimmer
-- Hunger Indicators: blinking exclamation mark above hungry fish (orange for 45%+, red for 75%+)
-
-### User Interface
-- Font Awesome 7 Icons: crisp, professional UI controls
-- Live Clock: HH:MM display synced to system time
-- Tooltip System: click any fish to see species, hunger percent, size percent, mood, preferred food (4-second popup)
-- Status Bar Integration: VS Code status bar shows tank summary and coin count
-- Food Selector: icon buttons for pellet, superworm, cricket, shrimp
-- Responsive Canvas: aquarium scales beautifully to panel size
-
-### Environment
-- Dynamic Background: gradient water with depth caustics, shifts for day/night
-- Gravel Floor: shadows beneath swimming fish
-- Bubbles: organic floating animation with sine-wave drift
-- Aquatic Plants: gently waving vegetation with procedural wind effect
+[![Version](https://img.shields.io/badge/version-1.0.2-blue.svg)](https://marketplace.visualstudio.com/items?itemName=jeffreybulanadi.vscodeaquarium)
+[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+[![VS Code](https://img.shields.io/badge/VS%20Code-1.75+-blueviolet.svg)](https://code.visualstudio.com)
 
 ---
 
-## Installation
+## What Is It?
 
-1. **VS Code Marketplace**: Search "VSCode Aquarium" and click Install
-2. Or manually: Download .vsix and run `code --install-extension vscode-aquarium-*.vsix`
+VSCode Aquarium is not a screensaver — it's a fully interactive freshwater tank simulation that lives inside your editor panel. Your fish are alive. They get hungry. They hunt food, compete for pellets, grow larger with every meal, and **die** if you neglect them.
 
----
-
-## Usage
-
-### Open the Aquarium
-- Command Palette (Ctrl+Shift+P / Cmd+Shift+P) then "Aquarium: Open Aquarium"
-- Extension auto-opens on first activation
-- Click the aquarium icon in the side panel to re-open
-
-### Feed the Fish
-- Click anywhere on the canvas to drop food
-- Or use Feed button in HUD
-- Or run Command Palette then "Aquarium: Feed Fish"
-
-### Manage Fish
-- Add Fish: Command Palette then "Aquarium: Add Fish", pick species
-- Remove All: Command Palette then "Aquarium: Remove All Fish"
-- Fish auto-save to VS Code settings
-
-### Tank Maintenance
-- Clean Tank button: Removes waste debris, 5-minute cooldown
-- Switch Type: Command Palette then "Aquarium: Switch Aquarium Type (Fresh/Salt)"
-- All settings persist across VS Code sessions
-
-### View Fish Stats
-- Click any fish to see tooltip with:
-  - Species name
-  - Hunger level (0-100 percent)
-  - Size scale (100-150 percent)
-  - Mood (Happy, Content, Hungry, Starving)
-  - Preferred foods
+Think **Tamagotchi meets coding environment**, rendered in 60 FPS canvas with hand-crafted sprite fish.
 
 ---
 
-## Commands
+## ✨ Features
 
-| Command | Description |
-|---------|-------------|
-| `aquarium.open` | Open aquarium in active editor |
-| `aquarium.addFish` | Add a new fish (choose species) |
-| `aquarium.removeAllFish` | Remove all fish (empty tank) |
-| `aquarium.feed` | Drop pellets at center |
-| `aquarium.switchType` | Toggle freshwater to saltwater |
+### 🐠 Sprite-Animated Fish
+- **7 freshwater species**, each with unique swim zones, speeds, and diet preferences
+- **3-section body wave** animation — the whole spine undulates head-to-tail, not just the tail
+- **Smooth direction turns** — fish squish-turn naturally instead of snapping to face the other way
+- **Per-species body flexibility** — Arowana and Snakehead flex more; Pleco and Alligator Gar are stiff
+- Multiple **color variants** per species (Silver / Red / Golden / Green Arowana, Tiger / Albino Oscar, etc.)
+
+### 🎮 Game Mechanics
+- **Hunger system** — fish slowly starve over 2–3 hours if unfed; feed them to keep them alive
+- **Food preferences** — each species prefers specific food; correct matches earn more coins and restore more hunger
+- **4 food types** — Pellet, Superworm, Cricket, Shrimp (each hand-animated)
+- **Growth** — well-fed fish grow visibly up to **150%** of their base size
+- **Death animation** — starved fish float belly-up to the surface and fade out
+- **Coin economy** — earn coins by feeding the right food; balance persists across sessions
+
+### 🌿 Living Environment
+- **Swaying aquatic plants** — procedural blade-by-blade animation with per-blade phase offsets
+- **Rising bubbles** — organic sine-wave drift
+- **Light caustics shimmer** — animated water-surface light bands
+- **Elliptical fish shadows** — depth cue on the gravel floor
+- **Waste debris** — uneaten food leaves particles on the gravel; use the Clean Tank button
+- **Day/Night cycle** — aquarium darkens automatically based on your real wall clock (dusk 20:00, night 22:00–05:00)
+
+### 🖥️ UI & Controls
+- **In-tank Spawn HUD** — click the ➕ button to instantly add fish with no Command Palette needed
+- **Font Awesome icons** — crisp, professional control bar
+- **Live clock** — HH:MM display synced to system time
+- **Fish tooltips** — click any fish for species name, hunger %, size %, mood, and preferred food (4-second popup)
+- **Hunger indicators** — blinking `!` above hungry fish (orange at 45%+, urgent red at 75%+)
+- **Status bar** — shows live fish count and coin total at the bottom of VS Code
+- **Responsive canvas** — aquarium scales to any panel size
 
 ---
 
-## Settings
+## 🐠 Fish Roster
 
-Customize behavior via File, Preferences, Settings (Ctrl+,) or edit .vscode/settings.json:
+| Species | Variants | Swim Zone | Preferred Food | Character |
+|---|---|---|---|---|
+| **Arowana** | Silver · Golden · Red · Green | Top (surface) | Cricket, Shrimp | Fast apex predator, elegant glide |
+| **Oscar Cichlid** | Tiger · Red · Albino | Mid-tank | Cricket, Superworm | Deep-bodied powerhouse, large eye |
+| **Snakehead** | Olive · Giant · Rainbow | Upper-mid | Cricket, Shrimp | Aggressive ambush hunter |
+| **Alligator Gar** | Olive · Spotted · Albino | Top-mid | Superworm, Shrimp | Ancient armored torpedo, stiff body |
+| **Red-Tailed Catfish** | Natural · Albino | Bottom | Superworm, Pellet | Roams mid-tank when hungry |
+| **Pleco** | Common · Royal · Gold Nugget | Gravel | Pellet | Stays on the bottom, barely moves |
+| **Flowerhorn Cichlid** | Red Dragon · Golden · Kamfa · Blue | Mid-tank | Cricket, Superworm | Vivid colors, prominent hump |
+
+> **Peacock Bass** is temporarily removed for a higher-quality sprite. Coming back soon.
+
+---
+
+## 🚀 Getting Started
+
+### Install
+1. Open VS Code
+2. Press `Ctrl+Shift+X` (Extensions)
+3. Search **"VSCode Aquarium"**
+4. Click **Install**
+
+The aquarium opens automatically when VS Code starts. A default tank with Arowana and Oscar is loaded.
+
+### Feed Your Fish
+| Action | How |
+|---|---|
+| Drop food at click position | Click anywhere on the canvas |
+| Drop food at center | Click the 🍽️ Feed button in the HUD |
+| Command Palette | `Aquarium: Feed Fish` |
+| Choose food type | Click Pellet / Superworm / Cricket / Shrimp icons in HUD |
+
+### Manage Your Tank
+| Action | How |
+|---|---|
+| Spawn a fish | Click ➕ in the HUD → pick species & color variant |
+| Add via palette | `Aquarium: Add Fish` |
+| Remove all fish | `Aquarium: Remove All Fish` |
+| Clean tank (waste) | Click the 🧹 Clean button (5-minute cooldown) |
+| Switch fresh ↔ salt | `Aquarium: Switch Aquarium Type (Fresh/Salt)` |
+| Toggle auto-open | `Aquarium: Toggle Auto-open on Startup` |
+
+### Click Any Fish
+A tooltip appears showing:
+- Species name
+- Hunger level (`0` = full → `100` = starving)
+- Size scale (100%–150%)
+- Current mood
+- Preferred foods
+
+---
+
+## ⚙️ Configuration
+
+Edit via **File → Preferences → Settings** or directly in `settings.json`:
 
 ```json
 {
   "aquarium.type": "freshwater",
+  "aquarium.autoOpen": true,
   "aquarium.fish": [
-    { "species": "arowana" },
-    { "species": "oscar" },
-    { "species": "pleco" }
+    { "species": "arowana",    "colorVariant": "silver" },
+    { "species": "oscar",      "colorVariant": "tiger"  },
+    { "species": "oscar",      "colorVariant": "albino" }
   ]
 }
 ```
 
-### Configuration Reference
-- **`aquarium.type`** (string, default: "freshwater")
-  - Options: "freshwater", "saltwater"
-  - Controls water appearance and available species
-
-- **`aquarium.fish`** (array, default: [ { "species": "arowana" }, { "species": "oscar" } ])
-  - Add/remove entries to customize starting tank
-  - Supported species: see Fish Species section above
-  - Format: { "species": "name", "colorVariant": "optional-variant" }
+| Setting | Type | Default | Description |
+|---|---|---|---|
+| `aquarium.type` | string | `"freshwater"` | `"freshwater"` or `"saltwater"` |
+| `aquarium.autoOpen` | boolean | `true` | Open aquarium on every VS Code launch |
+| `aquarium.fish` | array | _(3 defaults)_ | Fish in your tank; add/remove/customize |
 
 ---
 
-## Performance
+## 🧰 Commands
 
-- 60 FPS target, optimized canvas rendering
-- Sprite-based fish, efficient PNG/JPG frame-based animation
-- Cached gradients, background pre-baked off-screen
-- Lazy sprite loading, fish sprites load on first use
-- 2-5 MB footprint, minimal extension overhead
-
-Tested on: VS Code 1.75+ (Windows, macOS, Linux)
-
----
-
-## Troubleshooting
-
-### Fish not appearing
-- Check that aquarium.fish setting contains valid species names
-- Run "Aquarium: Add Fish" to spawn a new fish
-- Restart VS Code
-
-### Aquarium panel is black
-- Ensure the canvas is in focus (click on it)
-- Wait 2-3 seconds for sprites to load
-- Check browser console (View, Developer Tools) for errors
-
-### High CPU usage
-- Reduce number of fish (each costs 1-2 percent CPU when active)
-- Close other heavy extensions
-- Ensure VS Code hardware acceleration is enabled
-
-### Fish sizes look wrong
-- Fish grow dynamically as they eat, click to see current size percent
-- Some species are inherently smaller (pleco, flowerhorn)
-- Resize the editor panel, fish scale proportionally
+| Command | Description |
+|---|---|
+| `Aquarium: Open Aquarium` | Open or re-focus the aquarium panel |
+| `Aquarium: Add Fish` | Choose species & color variant to add |
+| `Aquarium: Remove All Fish` | Empty the tank |
+| `Aquarium: Feed Fish` | Drop pellets at center |
+| `Aquarium: Switch Aquarium Type` | Toggle freshwater ↔ saltwater |
+| `Aquarium: Toggle Auto-open on Startup` | Enable or disable auto-open |
 
 ---
 
-## Customization
+## ⚡ Performance
 
-### Add Custom Fish Species
-1. Create a PNG/JPG sprite (transparent background, fish facing right)
-2. Place in media folder
-3. Add entry to SPRITE_SPECIES in media/aquarium.js:
-   ```js
-   myfishspecies: {
-     scale: 1.2,
-     facesLeft: false,
-     targetH: 96,
-     vy: 0.3
-   }
-   ```
-4. Add to extension.ts FRESHWATER_SPECIES array
-5. Run `npm run compile`
+- **60 FPS** target via `requestAnimationFrame`
+- Background gradient baked to an offscreen canvas — only animated shimmer redraws each frame
+- Gradients and color stops cached; no GC pressure per frame
+- Sprite white-background removal runs once at load time, result cached
+- Each fish costs ~1–2% CPU at 60 FPS; recommended max 8–10 fish
+
+Tested on VS Code 1.75+ · Windows · macOS · Linux
 
 ---
 
-## Development
+## 🛠️ Development
 
 ### Prerequisites
 - Node.js 16+
 - TypeScript 5.3+
 - VS Code 1.75+
 
-### Build and Run
+### Build & Run
 ```bash
 npm install
-npm run compile          # Compile TypeScript to out/
-npm run watch            # Watch mode
+npm run compile   # Compile TypeScript → out/
+npm run watch     # Watch mode for development
 ```
 
-Press F5 in VS Code to launch the Extension Host (isolated VS Code window with extension loaded).
+Press **F5** in VS Code to launch an Extension Host debug window.
 
 ### Project Structure
 ```
-vscode-aquarium/
+vscodeaquarium/
 ├── src/
-│   └── extension.ts      # Extension host, webview creation
+│   └── extension.ts       # Extension host, webview creation, IPC
 ├── media/
-│   ├── aquarium.js       # Canvas render loop, game logic
-│   ├── aquarium.html     # Webview shell
-│   ├── aquarium.css      # Styling
-│   ├── *.jpg             # Fish sprites
-│   └── webfonts/         # Font Awesome icons
-├── out/                  # Compiled JS (generated)
-├── package.json          # Manifest
-└── tsconfig.json         # TypeScript config
+│   ├── aquarium.js        # Canvas render loop, fish AI, game logic
+│   ├── aquarium.html      # Webview shell + spawn HUD
+│   ├── aquarium.css       # Styling
+│   ├── *.jpg / *.png      # Fish sprites
+│   └── fontawesome.*      # Icon fonts
+├── out/                   # Compiled JS (git-ignored)
+├── package.json           # Extension manifest
+└── tsconfig.json
 ```
 
-### Key Technical Details
-- Canvas-based rendering, all via 2D context (60 FPS target)
-- Sprite system with PNG/JPG sprites and automatic white-background removal
-- Two-part tail animation: body and tail clip regions with sine-wave animation
-- Webview IPC: messages between extension host and webview for persistence
-- globalState: coins and growth saved to VS Code globalState (cross-session)
+### Architecture Notes
+- **Canvas 2D** rendering — no WebGL dependency
+- **3-section sprite animation**: body clip → mid-posterior clip (rotated) → tail clip (nested in mid's frame), producing a seamless S-curve body wave
+- **renderDir** float per fish: lerps from −1 to +1 at 10 units/s for smooth direction turns
+- **Webview IPC** via `postMessage` for persistence (fish list, coins, tank type)
+- Fish state stored in VS Code `settings.json`; coins in `globalState`
 
 ---
 
-## Contributing
+## 🗺️ Roadmap
 
-We welcome your help:
-1. Report bugs via GitHub Issues
-2. Suggest features via Discussions
-3. Submit sprites via pull requests with new fish species
-4. Optimize code via performance improvements
-
----
-
-## License
-
-MIT License - see LICENSE file
+- [ ] Peacock Bass — high-quality sprite coming back
+- [ ] Saltwater species — Clownfish, Tang, Lionfish, Pufferfish, Marine Angel
+- [ ] Tank decorations — rocks, driftwood, castles
+- [ ] Fish aggression and territorial behavior
+- [ ] Achievements system
+- [ ] Breeding mechanics
 
 ---
 
-## Roadmap
+## 🤝 Contributing
 
-- Saltwater species full implementation
-- Tank decorations (plants, rocks, castles)
-- Achievements system
-- Fish aggression and predation
-- Temperature and pH system
-- Breeding and genetic traits
-- Leaderboard (cloud sync)
+1. Fork and clone the repo
+2. `npm install && npm run compile`
+3. Press **F5** to test in Extension Host
+4. Submit a pull request
 
----
-
-## Credits
-
-- Inspired by vscode-pets
-- Icons via Font Awesome 7
-- Built with TypeScript and VS Code Extension API
+Bug reports and feature requests → [GitHub Issues](https://github.com/jeffreybulanadi/vscode-aquarium/issues)
 
 ---
 
-Enjoy your aquarium.
+## 📄 License
+
+MIT — see [LICENSE](LICENSE)
+
+---
+
+## 🙏 Credits
+
+- Inspired by [vscode-pets](https://marketplace.visualstudio.com/items?itemName=tonybaloney.vscode-pets)
+- Icons by [Font Awesome](https://fontawesome.com)
+- Built with TypeScript and the VS Code Extension API
+
+---
+
+*Keep your fish fed. Keep your code flowing.* 🐟
