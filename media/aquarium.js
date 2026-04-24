@@ -36,6 +36,7 @@
   let coins = 0;
   let cleanCooldown = 0;     // seconds until Clean button re-enables
   let tooltipData = null;    // { lines, x, y, expires (ms) }
+  let lightMode = 'auto';    // 'auto' | 'day' | 'night'
   const bubbles = [];
   const plants = [];
   const pellets = [];
@@ -525,18 +526,26 @@
     ctx.restore();
   }
 
-  // Day/Night overlay — based on real wall clock hour
+  // Day/Night overlay
   function drawDayNight() {
-    const h = new Date().getHours();
     let alpha = 0;
-    if (h >= 22 || h < 5)      alpha = 0.32;   // deep night
-    else if (h >= 20 || h < 7) alpha = 0.16;   // dusk / dawn
+    let isDeepNight = false;
+    if (lightMode === 'day') {
+      return; // full daylight, no overlay
+    } else if (lightMode === 'night') {
+      alpha = 0.32;
+      isDeepNight = true;
+    } else {
+      const h = new Date().getHours();
+      if (h >= 22 || h < 5)      { alpha = 0.32; isDeepNight = true; }
+      else if (h >= 20 || h < 7) { alpha = 0.16; }
+    }
     if (alpha === 0) return;
     ctx.save();
     ctx.globalAlpha = alpha;
     ctx.fillStyle = '#000d1a';
     ctx.fillRect(0, 0, W, H);
-    if (h >= 22 || h < 5) {
+    if (isDeepNight) {
       ctx.globalAlpha = 0.06;
       ctx.fillStyle = '#c8e0ff';
       ctx.beginPath();
@@ -1371,10 +1380,45 @@
   cleanBtn.addEventListener('click', () => {
     if (cleanCooldown > 0) return;
     waste.length = 0;
-    cleanCooldown = 300;  // 5-minute cooldown
+    cleanCooldown = 300;
     cleanBtn.innerHTML = '<i class="fa-solid fa-broom"></i> Cleaned!';
     setTimeout(() => { cleanBtn.innerHTML = '<i class="fa-solid fa-broom"></i> Clean'; }, 2000);
   });
+
+  const resetBtn = document.getElementById('resetBtn');
+  resetBtn.addEventListener('click', () => {
+    const defaults = [
+      { species: 'arowana', colorVariant: 'silver' },
+      { species: 'oscar',   colorVariant: 'tiger'  },
+      { species: 'oscar',   colorVariant: 'albino' },
+    ];
+    fish.length = 0;
+    defaults.forEach(d => {
+      const f = makeFish(d.species, d.colorVariant);
+      fish.push(f);
+      clampFish(f);
+    });
+    const typeText = aquariumType === 'saltwater' ? 'Saltwater' : 'Freshwater';
+    label.innerHTML = `<i class="fa-solid fa-fish"></i> ${typeText} · ${fish.length} fish`;
+    vscode.postMessage({ type: 'resetFish', fish: defaults });
+  });
+
+  const lightBtn = document.getElementById('lightBtn');
+  const LIGHT_MODES = ['auto', 'day', 'night'];
+  const LIGHT_LABELS = {
+    auto:  '<i class="fa-solid fa-clock-rotate-left"></i> Auto',
+    day:   '<i class="fa-solid fa-sun"></i> Day',
+    night: '<i class="fa-solid fa-moon"></i> Night',
+  };
+  function updateLightBtn() {
+    lightBtn.innerHTML = LIGHT_LABELS[lightMode];
+  }
+  lightBtn.addEventListener('click', () => {
+    const idx = LIGHT_MODES.indexOf(lightMode);
+    lightMode = LIGHT_MODES[(idx + 1) % LIGHT_MODES.length];
+    updateLightBtn();
+  });
+  updateLightBtn();
 
   window.addEventListener('message', (e) => {
     const msg = e.data;

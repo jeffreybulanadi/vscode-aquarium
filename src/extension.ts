@@ -107,6 +107,8 @@ function openAquarium(context: vscode.ExtensionContext) {
       const fish = getConfig().get<any[]>('fish', []).slice();
       fish.push({ species: msg.species, colorVariant: msg.colorVariant });
       getConfig().update('fish', fish, vscode.ConfigurationTarget.Global);
+    } else if (msg?.type === 'resetFish') {
+      getConfig().update('fish', msg.fish, vscode.ConfigurationTarget.Global);
     } else if (msg?.type === 'gameUpdate') {
       const { coins, fishCount } = msg;
       context.globalState.update('aquarium.coins', coins);
