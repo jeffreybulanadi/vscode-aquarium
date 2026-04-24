@@ -54,15 +54,37 @@
     oc2.drawImage(img, 0, 0);
     const id = oc2.getImageData(0, 0, oc.width, oc.height);
     const d = id.data;
-    for (let i = 0; i < d.length; i += 4) {
-      const r = d[i], g = d[i + 1], b = d[i + 2];
-      // Only strip achromatic (near-gray) very-bright pixels — preserves pale fish like axolotl
-      const minC = Math.min(r, g, b);
-      const chroma = Math.max(r, g, b) - minC; // 0 = grey/white, high = coloured
-      if (minC > 212 && chroma < 28) {
-        d[i + 3] = minC >= 240 ? 0 : Math.round(((240 - minC) / 28) * 255);
-      }
+    const IW = oc.width, IH = oc.height;
+
+    // Flood-fill from all 4 edges — only removes background pixels connected
+    // to the image border, so white patches inside the fish body are preserved.
+    function isBg(p) {
+      const mn = Math.min(d[p], d[p + 1], d[p + 2]);
+      return mn > 200 && (Math.max(d[p], d[p + 1], d[p + 2]) - mn) < 40;
     }
+    const visited = new Uint8Array(IW * IH);
+    const queue = [];
+    for (let x = 0; x < IW; x++) {
+      const t = x, bo = (IH - 1) * IW + x;
+      if (!visited[t]  && isBg(t  * 4)) { visited[t]  = 1; queue.push(t);  }
+      if (!visited[bo] && isBg(bo * 4)) { visited[bo] = 1; queue.push(bo); }
+    }
+    for (let y = 1; y < IH - 1; y++) {
+      const l = y * IW, r = y * IW + IW - 1;
+      if (!visited[l] && isBg(l * 4)) { visited[l] = 1; queue.push(l); }
+      if (!visited[r] && isBg(r * 4)) { visited[r] = 1; queue.push(r); }
+    }
+    let qi = 0;
+    while (qi < queue.length) {
+      const pos = queue[qi++];
+      d[pos * 4 + 3] = 0;
+      const px = pos % IW, py = (pos / IW) | 0;
+      if (px > 0)      { const n = pos - 1;  if (!visited[n] && isBg(n * 4)) { visited[n] = 1; queue.push(n); } }
+      if (px < IW - 1) { const n = pos + 1;  if (!visited[n] && isBg(n * 4)) { visited[n] = 1; queue.push(n); } }
+      if (py > 0)      { const n = pos - IW; if (!visited[n] && isBg(n * 4)) { visited[n] = 1; queue.push(n); } }
+      if (py < IH - 1) { const n = pos + IW; if (!visited[n] && isBg(n * 4)) { visited[n] = 1; queue.push(n); } }
+    }
+
     oc2.putImageData(id, 0, 0);
     return oc;
   }
