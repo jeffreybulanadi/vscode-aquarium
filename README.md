@@ -4,7 +4,9 @@ A freshwater aquarium that lives inside your VS Code editor. Sprite-animated fis
 
 ![VSCode Aquarium Preview](screenshots/preview.png)
 
-[![Version](https://img.shields.io/badge/version-1.0.2-blue.svg)](https://marketplace.visualstudio.com/items?itemName=jeffreybulanadi.vscodeaquarium)
+[![Version](https://img.shields.io/visual-studio-marketplace/v/jeffreybulanadi.vscodeaquarium?label=version)](https://marketplace.visualstudio.com/items?itemName=jeffreybulanadi.vscodeaquarium)
+[![Installs](https://img.shields.io/visual-studio-marketplace/i/jeffreybulanadi.vscodeaquarium)](https://marketplace.visualstudio.com/items?itemName=jeffreybulanadi.vscodeaquarium)
+[![Rating](https://img.shields.io/visual-studio-marketplace/r/jeffreybulanadi.vscodeaquarium)](https://marketplace.visualstudio.com/items?itemName=jeffreybulanadi.vscodeaquarium)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![VS Code](https://img.shields.io/badge/VS%20Code-1.75+-blueviolet.svg)](https://code.visualstudio.com)
 
