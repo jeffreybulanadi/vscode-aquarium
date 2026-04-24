@@ -56,33 +56,55 @@
     const d = id.data;
     const IW = oc.width, IH = oc.height;
 
-    // Flood-fill from all 4 edges — only removes background pixels connected
-    // to the image border, so white patches inside the fish body are preserved.
+    // Pass 1 — strict flood-fill from all 4 edges.
+    // Threshold is tight (mn > 240) so the dark outlines on cartoon/illustration
+    // sprites stop the fill before it reaches the white interior of the fish body.
     function isBg(p) {
       const mn = Math.min(d[p], d[p + 1], d[p + 2]);
-      return mn > 200 && (Math.max(d[p], d[p + 1], d[p + 2]) - mn) < 40;
+      const mx = Math.max(d[p], d[p + 1], d[p + 2]);
+      return mn > 240 && (mx - mn) < 15;
     }
-    const visited = new Uint8Array(IW * IH);
+    const removed = new Uint8Array(IW * IH);
     const queue = [];
     for (let x = 0; x < IW; x++) {
       const t = x, bo = (IH - 1) * IW + x;
-      if (!visited[t]  && isBg(t  * 4)) { visited[t]  = 1; queue.push(t);  }
-      if (!visited[bo] && isBg(bo * 4)) { visited[bo] = 1; queue.push(bo); }
+      if (isBg(t  * 4)) { removed[t]  = 1; queue.push(t);  }
+      if (isBg(bo * 4)) { removed[bo] = 1; queue.push(bo); }
     }
     for (let y = 1; y < IH - 1; y++) {
       const l = y * IW, r = y * IW + IW - 1;
-      if (!visited[l] && isBg(l * 4)) { visited[l] = 1; queue.push(l); }
-      if (!visited[r] && isBg(r * 4)) { visited[r] = 1; queue.push(r); }
+      if (isBg(l * 4)) { removed[l] = 1; queue.push(l); }
+      if (isBg(r * 4)) { removed[r] = 1; queue.push(r); }
     }
     let qi = 0;
     while (qi < queue.length) {
       const pos = queue[qi++];
       d[pos * 4 + 3] = 0;
       const px = pos % IW, py = (pos / IW) | 0;
-      if (px > 0)      { const n = pos - 1;  if (!visited[n] && isBg(n * 4)) { visited[n] = 1; queue.push(n); } }
-      if (px < IW - 1) { const n = pos + 1;  if (!visited[n] && isBg(n * 4)) { visited[n] = 1; queue.push(n); } }
-      if (py > 0)      { const n = pos - IW; if (!visited[n] && isBg(n * 4)) { visited[n] = 1; queue.push(n); } }
-      if (py < IH - 1) { const n = pos + IW; if (!visited[n] && isBg(n * 4)) { visited[n] = 1; queue.push(n); } }
+      if (px > 0)      { const n = pos - 1;  if (!removed[n] && isBg(n * 4)) { removed[n] = 1; queue.push(n); } }
+      if (px < IW - 1) { const n = pos + 1;  if (!removed[n] && isBg(n * 4)) { removed[n] = 1; queue.push(n); } }
+      if (py > 0)      { const n = pos - IW; if (!removed[n] && isBg(n * 4)) { removed[n] = 1; queue.push(n); } }
+      if (py < IH - 1) { const n = pos + IW; if (!removed[n] && isBg(n * 4)) { removed[n] = 1; queue.push(n); } }
+    }
+
+    // Pass 2 — feather the anti-aliased fringe.
+    // Pixels adjacent to removed background with mn > 210 get partially faded
+    // so the 1-2px gray anti-aliasing ring around the outline blends cleanly.
+    for (let pos = 0; pos < IW * IH; pos++) {
+      if (removed[pos]) continue;
+      const p4 = pos * 4;
+      const mn = Math.min(d[p4], d[p4 + 1], d[p4 + 2]);
+      if (mn < 210) continue;
+      const px = pos % IW, py = (pos / IW) | 0;
+      const nearBg =
+        (px > 0      && removed[pos - 1])  ||
+        (px < IW - 1 && removed[pos + 1])  ||
+        (py > 0      && removed[pos - IW]) ||
+        (py < IH - 1 && removed[pos + IW]);
+      if (nearBg) {
+        // mn=255 → alpha 0, mn=210 → alpha 255
+        d[p4 + 3] = Math.round(((255 - mn) / 45) * 255);
+      }
     }
 
     oc2.putImageData(id, 0, 0);
