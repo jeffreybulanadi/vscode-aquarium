@@ -54,15 +54,59 @@
     oc2.drawImage(img, 0, 0);
     const id = oc2.getImageData(0, 0, oc.width, oc.height);
     const d = id.data;
-    for (let i = 0; i < d.length; i += 4) {
-      const r = d[i], g = d[i + 1], b = d[i + 2];
-      // Only strip achromatic (near-gray) very-bright pixels — preserves pale fish like axolotl
-      const minC = Math.min(r, g, b);
-      const chroma = Math.max(r, g, b) - minC; // 0 = grey/white, high = coloured
-      if (minC > 212 && chroma < 28) {
-        d[i + 3] = minC >= 240 ? 0 : Math.round(((240 - minC) / 28) * 255);
+    const IW = oc.width, IH = oc.height;
+
+    // Pass 1 — strict flood-fill from all 4 edges.
+    // Threshold is tight (mn > 240) so the dark outlines on cartoon/illustration
+    // sprites stop the fill before it reaches the white interior of the fish body.
+    function isBg(p) {
+      const mn = Math.min(d[p], d[p + 1], d[p + 2]);
+      const mx = Math.max(d[p], d[p + 1], d[p + 2]);
+      return mn > 240 && (mx - mn) < 15;
+    }
+    const removed = new Uint8Array(IW * IH);
+    const queue = [];
+    for (let x = 0; x < IW; x++) {
+      const t = x, bo = (IH - 1) * IW + x;
+      if (isBg(t  * 4)) { removed[t]  = 1; queue.push(t);  }
+      if (isBg(bo * 4)) { removed[bo] = 1; queue.push(bo); }
+    }
+    for (let y = 1; y < IH - 1; y++) {
+      const l = y * IW, r = y * IW + IW - 1;
+      if (isBg(l * 4)) { removed[l] = 1; queue.push(l); }
+      if (isBg(r * 4)) { removed[r] = 1; queue.push(r); }
+    }
+    let qi = 0;
+    while (qi < queue.length) {
+      const pos = queue[qi++];
+      d[pos * 4 + 3] = 0;
+      const px = pos % IW, py = (pos / IW) | 0;
+      if (px > 0)      { const n = pos - 1;  if (!removed[n] && isBg(n * 4)) { removed[n] = 1; queue.push(n); } }
+      if (px < IW - 1) { const n = pos + 1;  if (!removed[n] && isBg(n * 4)) { removed[n] = 1; queue.push(n); } }
+      if (py > 0)      { const n = pos - IW; if (!removed[n] && isBg(n * 4)) { removed[n] = 1; queue.push(n); } }
+      if (py < IH - 1) { const n = pos + IW; if (!removed[n] && isBg(n * 4)) { removed[n] = 1; queue.push(n); } }
+    }
+
+    // Pass 2 — feather the anti-aliased fringe.
+    // Pixels adjacent to removed background with mn > 210 get partially faded
+    // so the 1-2px gray anti-aliasing ring around the outline blends cleanly.
+    for (let pos = 0; pos < IW * IH; pos++) {
+      if (removed[pos]) continue;
+      const p4 = pos * 4;
+      const mn = Math.min(d[p4], d[p4 + 1], d[p4 + 2]);
+      if (mn < 210) continue;
+      const px = pos % IW, py = (pos / IW) | 0;
+      const nearBg =
+        (px > 0      && removed[pos - 1])  ||
+        (px < IW - 1 && removed[pos + 1])  ||
+        (py > 0      && removed[pos - IW]) ||
+        (py < IH - 1 && removed[pos + IW]);
+      if (nearBg) {
+        // mn=255 → alpha 0, mn=210 → alpha 255
+        d[p4 + 3] = Math.round(((255 - mn) / 45) * 255);
       }
     }
+
     oc2.putImageData(id, 0, 0);
     return oc;
   }
@@ -86,13 +130,22 @@
   // fx/fy/fw/fh are fractions of the source sprite canvas (0-1)
   // facesLeft: head is at LEFT of image (need scale(-dir,1)); else head at RIGHT
   const SPRITE_SPECIES = {
-    arowana:      { sheet: 'arowana',    fx: 0,        fy: 0,        fw: 1,        fh: 1,        targetH: 160, facesLeft: true,  tailRatio: 0.22 },
-    oscar:        { sheet: 'oscar',      fx: 0,        fy: 0,        fw: 1,        fh: 1,        targetH: 76,  facesLeft: false, tailRatio: 0.20 },
-    snakehead:    { sheet: 'composite1', fx: 45/1339,  fy: 8/784,    fw: 1250/1339,fh: 248/784,  targetH: 34,  facesLeft: false, tailRatio: 0.22 },
-    alligatorgar: { sheet: 'ag',         fx: 0,        fy: 0,        fw: 1,        fh: 1,        targetH: 140, facesLeft: false, tailRatio: 0.22 },
-    rtcatfish:    { sheet: 'rtc',        fx: 0,        fy: 0,        fw: 1,        fh: 1,        targetH: 124, facesLeft: false, tailRatio: 0.25 },
-    pleco:        { sheet: 'composite2', fx: 115/1339, fy: 540/784,  fw: 975/1339, fh: 242/784,  targetH: 48,  facesLeft: false, tailRatio: 0.18 },
-    flowerhorn:   { sheet: 'flowerhorn', fx: 0,        fy: 0,        fw: 1,        fh: 1,        targetH: 88,  facesLeft: true,  tailRatio: 0.22 },
+    arowana:      { sheet: 'arowana',      fx: 0,    fy: 0, fw: 1,    fh: 1, targetH: 160, facesLeft: true,  tailRatio: 0.22 },
+    oscar:        { sheet: 'oscar',        fx: 0,    fy: 0, fw: 1,    fh: 1, targetH: 76,  facesLeft: false, tailRatio: 0.20 },
+    snakehead:    { sheet: 'composite1',   fx: 45/1339, fy: 8/784, fw: 1250/1339, fh: 248/784, targetH: 34, facesLeft: false, tailRatio: 0.22 },
+    alligatorgar: { sheet: 'ag',           fx: 0,    fy: 0, fw: 1,    fh: 1, targetH: 160, facesLeft: false, tailRatio: 0.22 },
+    rtcatfish:    { sheet: 'rtc',          fx: 0,    fy: 0, fw: 1,    fh: 1, targetH: 124, facesLeft: false, tailRatio: 0.25 },
+    pleco:        { sheet: 'pleco',        fx: 0,    fy: 0, fw: 1,    fh: 1, targetH: 62,  facesLeft: true,  tailRatio: 0.20 },
+    flowerhorn:   { sheet: 'flowerhorn',   fx: 0,    fy: 0, fw: 1,    fh: 1, targetH: 88,  facesLeft: true,  tailRatio: 0.22 },
+    peacockbass:  { sheet: 'peacockbass',  fx: 0,    fy: 0, fw: 1,    fh: 1, targetH: 82,  facesLeft: true,  tailRatio: 0.22 },
+    knifefish:    { sheet: 'knifefish',    fx: 0,    fy: 0, fw: 1,    fh: 1, targetH: 84,  facesLeft: true,  tailRatio: 0.28 },
+    silverdollar: { sheet: 'silverdollar', fx: 0,    fy: 0, fw: 1,    fh: 1, targetH: 72,  facesLeft: true,  tailRatio: 0.20 },
+    giantgourami: { sheet: 'giantgourami', fx: 0,    fy: 0, fw: 1,    fh: 1, targetH: 88,  facesLeft: true,  tailRatio: 0.21 },
+    blackmoor:    { sheet: 'blackmoor',    fx: 0,    fy: 0, fw: 1,    fh: 1, targetH: 44,  facesLeft: true,  tailRatio: 0.25 },
+    lionhead:     { sheet: 'lionhead',     fx: 0,    fy: 0, fw: 1,    fh: 1, targetH: 46,  facesLeft: true,  tailRatio: 0.28 },
+    shubunkin:    { sheet: 'shubukin',     fx: 0,    fy: 0, fw: 1,    fh: 1, targetH: 42,  facesLeft: false, tailRatio: 0.30 },
+    calico:       { sheet: 'calico',       fx: 0,    fy: 0, fw: 1,    fh: 1, targetH: 48,  facesLeft: true,  tailRatio: 0.22 },
+    redcap:       { sheet: 'redcap',       fx: 0,    fy: 0, fw: 1,    fh: 1, targetH: 44,  facesLeft: true,  tailRatio: 0.26 },
   };
 
   // Color variants per species — CSS filter strings
@@ -119,6 +172,33 @@
                    { id: 'golden',    filter: 'sepia(0.6) saturate(2.5) hue-rotate(10deg) brightness(1.1)' },
                    { id: 'kamfa',     filter: 'hue-rotate(200deg) saturate(1.4) brightness(0.9)' },
                    { id: 'blue',      filter: 'hue-rotate(160deg) saturate(1.8) brightness(0.95)' }],
+    peacockbass:  [{ id: 'natural',   filter: '' },
+                   { id: 'speckled',  filter: 'hue-rotate(20deg) saturate(1.4) contrast(1.1)' },
+                   { id: 'butterfly', filter: 'hue-rotate(-30deg) saturate(1.8) brightness(1.05)' }],
+    knifefish:    [{ id: 'natural',   filter: '' },
+                   { id: 'ghost',     filter: 'sepia(0.2) brightness(1.6) saturate(0.3)' },
+                   { id: 'dark',      filter: 'brightness(0.65) contrast(1.3)' }],
+    silverdollar: [{ id: 'silver',    filter: '' },
+                   { id: 'spotted',   filter: 'contrast(1.3) brightness(0.92)' },
+                   { id: 'red_hook',  filter: 'hue-rotate(-15deg) saturate(1.6) brightness(1.0)' }],
+    giantgourami: [{ id: 'natural',   filter: '' },
+                   { id: 'gold',      filter: 'sepia(0.7) saturate(2.8) hue-rotate(18deg) brightness(1.1)' },
+                   { id: 'albino',    filter: 'sepia(0.15) brightness(1.65) saturate(0.35)' }],
+    blackmoor:    [{ id: 'natural',   filter: '' },
+                   { id: 'telescope', filter: 'brightness(0.80) contrast(1.2)' },
+                   { id: 'velvet',    filter: 'hue-rotate(200deg) saturate(1.3) brightness(0.70)' }],
+    lionhead:     [{ id: 'red_white', filter: '' },
+                   { id: 'orange',    filter: 'hue-rotate(10deg) saturate(1.5) brightness(1.05)' },
+                   { id: 'calico',    filter: 'hue-rotate(-15deg) saturate(1.8) contrast(1.1)' }],
+    shubunkin:    [{ id: 'natural',   filter: '' },
+                   { id: 'blue',      filter: 'hue-rotate(160deg) saturate(1.4) brightness(0.95)' },
+                   { id: 'orange',    filter: 'hue-rotate(20deg) saturate(2.0) brightness(1.05)' }],
+    calico:       [{ id: 'natural',   filter: '' },
+                   { id: 'orange_black', filter: 'hue-rotate(10deg) saturate(1.6) contrast(1.15)' },
+                   { id: 'red_white', filter: 'sepia(0.2) saturate(1.8) brightness(1.1)' }],
+    redcap:       [{ id: 'natural',   filter: '' },
+                   { id: 'orange_cap',filter: 'hue-rotate(12deg) saturate(1.6) brightness(1.05)' },
+                   { id: 'black_cap', filter: 'hue-rotate(180deg) saturate(0.5) brightness(0.80)' }],
   };
 
   // Y zone fractions (fraction of canvas height) — controls vertical swim territory
@@ -130,20 +210,33 @@
     rtcatfish:    { yMin: 0.68, yMax: 0.92 },
     flowerhorn:   { yMin: 0.18, yMax: 0.78 },
     pleco:        { yMin: 0.90, yMax: 0.97 },
+    peacockbass:  { yMin: 0.15, yMax: 0.65 },
+    knifefish:    { yMin: 0.35, yMax: 0.82 },
+    silverdollar: { yMin: 0.20, yMax: 0.70 },
+    giantgourami: { yMin: 0.25, yMax: 0.75 },
+    blackmoor:    { yMin: 0.20, yMax: 0.78 },
+    lionhead:     { yMin: 0.20, yMax: 0.78 },
+    shubunkin:    { yMin: 0.15, yMax: 0.72 },
+    calico:       { yMin: 0.20, yMax: 0.78 },
+    redcap:       { yMin: 0.20, yMax: 0.78 },
   };
 
   // Base swim speeds (px/s) — differentiated per species behavior
   const SPECIES_SPEED = {
     arowana: 65, snakehead: 42,
     alligatorgar: 28, oscar: 22, flowerhorn: 18,
+    peacockbass: 35, knifefish: 28, silverdollar: 30, giantgourami: 12,
     rtcatfish: 14, pleco: 6,
+    blackmoor: 12, lionhead: 15, shubunkin: 22, calico: 14, redcap: 17,
   };
 
   // Mid-body undulation amplitude (radians) — higher = more flexible body wave
   const SPECIES_MID_AMP = {
     arowana: 0.09, snakehead: 0.10,
     alligatorgar: 0.04, oscar: 0.07, flowerhorn: 0.07,
+    peacockbass: 0.08, knifefish: 0.12, silverdollar: 0.06, giantgourami: 0.05,
     rtcatfish: 0.08, pleco: 0.03,
+    blackmoor: 0.04, lionhead: 0.04, shubunkin: 0.06, calico: 0.04, redcap: 0.05,
   };
 
   // Hunger decay rate (units/sec). Fish hunger 0→100 over time;
@@ -151,6 +244,8 @@
   const HUNGER_DECAY = {
     arowana: 0.010, oscar: 0.013, snakehead: 0.011,
     alligatorgar: 0.008, rtcatfish: 0.010, pleco: 0.006, flowerhorn: 0.013,
+    peacockbass: 0.012, knifefish: 0.009, silverdollar: 0.010, giantgourami: 0.008,
+    blackmoor: 0.009, lionhead: 0.010, shubunkin: 0.010, calico: 0.009, redcap: 0.010,
   };
 
   // Preferred food per species — correct food earns +15 coins & more satiety
@@ -162,6 +257,15 @@
     rtcatfish:    ['superworm', 'pellet'],
     pleco:        ['pellet'],
     flowerhorn:   ['cricket', 'superworm'],
+    peacockbass:  ['shrimp', 'cricket'],
+    knifefish:    ['shrimp', 'superworm'],
+    silverdollar: ['pellet', 'cricket'],
+    giantgourami: ['pellet', 'superworm'],
+    blackmoor:    ['pellet', 'shrimp'],
+    lionhead:     ['pellet', 'shrimp'],
+    shubunkin:    ['pellet', 'cricket'],
+    calico:       ['pellet', 'shrimp'],
+    redcap:       ['pellet', 'shrimp'],
   };
 
   // Friendly species names (shown in tooltip)
@@ -169,6 +273,10 @@
     arowana: 'Arowana', oscar: 'Oscar Cichlid', snakehead: 'Snakehead',
     alligatorgar: 'Alligator Gar',
     rtcatfish: 'Red-Tailed Catfish', pleco: 'Pleco', flowerhorn: 'Flowerhorn',
+    peacockbass: 'Peacock Bass', knifefish: 'Knifefish',
+    silverdollar: 'Silver Dollar', giantgourami: 'Giant Gourami',
+    blackmoor: 'Black Moor', lionhead: 'Lionhead', shubunkin: 'Shubunkin',
+    calico: 'Calico Oranda', redcap: 'Red Cap Oranda',
   };
 
   // ---------- Resize ----------
