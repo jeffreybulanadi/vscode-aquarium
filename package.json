@@ -2,7 +2,7 @@
   "name": "vscodeaquarium",
   "displayName": "VSCode Aquarium",
   "description": "A living, breathing aquarium with game mechanics inside your VS Code editor. Feed, grow, and manage your fish!",
-  "version": "1.0.3",
+  "version": "1.1.0",
   "publisher": "jeffreybulanadi",
   "license": "MIT",
   "icon": "media/icon.png",
