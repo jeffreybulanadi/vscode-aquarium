@@ -36,6 +36,7 @@
   let coins = 0;
   let cleanCooldown = 0;     // seconds until Clean button re-enables
   let tooltipData = null;    // { lines, x, y, expires (ms) }
+  let lightMode = 'auto';    // 'auto' | 'day' | 'night'
   const bubbles = [];
   const plants = [];
   const pellets = [];
@@ -86,9 +87,8 @@
   // facesLeft: head is at LEFT of image (need scale(-dir,1)); else head at RIGHT
   const SPRITE_SPECIES = {
     arowana:      { sheet: 'arowana',    fx: 0,        fy: 0,        fw: 1,        fh: 1,        targetH: 160, facesLeft: true,  tailRatio: 0.22 },
-    oscar:        { sheet: 'oscar',fx: 0,        fy: 0,        fw: 1,        fh: 1,        targetH: 76,  facesLeft: false, tailRatio: 0.20 },
+    oscar:        { sheet: 'oscar',      fx: 0,        fy: 0,        fw: 1,        fh: 1,        targetH: 76,  facesLeft: false, tailRatio: 0.20 },
     snakehead:    { sheet: 'composite1', fx: 45/1339,  fy: 8/784,    fw: 1250/1339,fh: 248/784,  targetH: 34,  facesLeft: false, tailRatio: 0.22 },
-    peacockbass:  { sheet: 'composite1', fx: 65/1339,  fy: 278/784,  fw: 1240/1339,fh: 255/784,  targetH: 64,  facesLeft: false, tailRatio: 0.22 },
     alligatorgar: { sheet: 'ag',         fx: 0,        fy: 0,        fw: 1,        fh: 1,        targetH: 140, facesLeft: false, tailRatio: 0.22 },
     rtcatfish:    { sheet: 'rtc',        fx: 0,        fy: 0,        fw: 1,        fh: 1,        targetH: 124, facesLeft: false, tailRatio: 0.25 },
     pleco:        { sheet: 'composite2', fx: 115/1339, fy: 540/784,  fw: 975/1339, fh: 242/784,  targetH: 48,  facesLeft: false, tailRatio: 0.18 },
@@ -99,7 +99,7 @@
   const SPECIES_COLOR_VARIANTS = {
     arowana:      [{ id: 'silver',    filter: '' },
                    { id: 'golden',    filter: 'sepia(0.8) saturate(2.2) hue-rotate(18deg) brightness(1.1)' },
-                   { id: 'red',       filter: 'sepia(1) saturate(3) hue-rotate(-20deg)' },
+                   { id: 'red',       filter: 'sepia(1) hue-rotate(-35deg) saturate(4.5) brightness(0.82)' },
                    { id: 'green',     filter: 'hue-rotate(60deg) saturate(1.6) brightness(0.9)' }],
     oscar:        [{ id: 'tiger',     filter: '' },
                    { id: 'red',       filter: 'hue-rotate(-20deg) saturate(1.8) brightness(1.05)' },
@@ -107,9 +107,6 @@
     snakehead:    [{ id: 'olive',     filter: '' },
                    { id: 'giant',     filter: 'hue-rotate(28deg) saturate(0.7) brightness(0.88)' },
                    { id: 'rainbow',   filter: 'hue-rotate(-40deg) saturate(2.2) brightness(1.05)' }],
-    peacockbass:  [{ id: 'speckled',  filter: '' },
-                   { id: 'butterfly', filter: 'hue-rotate(22deg) saturate(1.4)' },
-                   { id: 'mono',      filter: 'saturate(0.25) brightness(1.1)' }],
     alligatorgar: [{ id: 'olive',     filter: '' },
                    { id: 'spotted',   filter: 'hue-rotate(15deg) contrast(1.25)' },
                    { id: 'albino',    filter: 'sepia(0.35) brightness(1.6) saturate(0.4)' }],
@@ -129,7 +126,6 @@
     alligatorgar: { yMin: 0.08, yMax: 0.55 },
     arowana:      { yMin: 0.22, yMax: 0.34 },
     snakehead:    { yMin: 0.08, yMax: 0.52 },
-    peacockbass:  { yMin: 0.15, yMax: 0.75 },
     oscar:        { yMin: 0.15, yMax: 0.75 },
     rtcatfish:    { yMin: 0.68, yMax: 0.92 },
     flowerhorn:   { yMin: 0.18, yMax: 0.78 },
@@ -138,15 +134,22 @@
 
   // Base swim speeds (px/s) — differentiated per species behavior
   const SPECIES_SPEED = {
-    arowana: 65, peacockbass: 52, snakehead: 42,
+    arowana: 65, snakehead: 42,
     alligatorgar: 28, oscar: 22, flowerhorn: 18,
     rtcatfish: 14, pleco: 6,
+  };
+
+  // Mid-body undulation amplitude (radians) — higher = more flexible body wave
+  const SPECIES_MID_AMP = {
+    arowana: 0.09, snakehead: 0.10,
+    alligatorgar: 0.04, oscar: 0.07, flowerhorn: 0.07,
+    rtcatfish: 0.08, pleco: 0.03,
   };
 
   // Hunger decay rate (units/sec). Fish hunger 0→100 over time;
   // rates set so fish survive ~2-3 hrs without feeding before dying.
   const HUNGER_DECAY = {
-    arowana: 0.010, oscar: 0.013, snakehead: 0.011, peacockbass: 0.013,
+    arowana: 0.010, oscar: 0.013, snakehead: 0.011,
     alligatorgar: 0.008, rtcatfish: 0.010, pleco: 0.006, flowerhorn: 0.013,
   };
 
@@ -155,7 +158,6 @@
     arowana:      ['cricket', 'shrimp'],
     oscar:        ['cricket', 'superworm'],
     snakehead:    ['cricket', 'shrimp'],
-    peacockbass:  ['shrimp', 'superworm'],
     alligatorgar: ['superworm', 'shrimp'],
     rtcatfish:    ['superworm', 'pellet'],
     pleco:        ['pellet'],
@@ -165,7 +167,7 @@
   // Friendly species names (shown in tooltip)
   const SPECIES_LABEL = {
     arowana: 'Arowana', oscar: 'Oscar Cichlid', snakehead: 'Snakehead',
-    peacockbass: 'Peacock Bass', alligatorgar: 'Alligator Gar',
+    alligatorgar: 'Alligator Gar',
     rtcatfish: 'Red-Tailed Catfish', pleco: 'Pleco', flowerhorn: 'Flowerhorn',
   };
 
@@ -248,12 +250,13 @@
     const zone = SPECIES_ZONE[species] || { yMin: 0.10, yMax: 0.85 };
     const spd  = SPECIES_SPEED[species] || 25;
     const yPos = H * (zone.yMin + Math.random() * (zone.yMax - zone.yMin));
+    const dir0 = Math.random() < 0.5 ? -1 : 1;   // initial swim direction
     return {
       species,
       visualParams: buildVisualParams(species, colorVariantId),
       x: Math.random() * W,
       y: yPos,
-      vx: (Math.random() < 0.5 ? -1 : 1) * (spd * 0.6 + Math.random() * spd * 0.4),
+      vx: dir0 * (spd * 0.6 + Math.random() * spd * 0.4),
       vy: (Math.random() - 0.5) * 8,
       targetY: yPos,
       changeIn: 1 + Math.random() * 3,
@@ -264,6 +267,7 @@
       growthScale: 1.0,  // grows with feeding, max 1.5
       dead: false,
       deathTimer: 0,
+      renderDir: dir0,   // smooth direction — lerps when fish turns
     };
   }
 
@@ -424,6 +428,10 @@
       if (f.x > W - margin) { f.x = W - margin; f.vx = -Math.abs(f.vx); }
       if (f.y < yMin) { f.y = yMin; f.vy = 0; f.targetY = yMin + (yMax - yMin) * (0.2 + Math.random() * 0.5); }
       if (f.y > yMax) { f.y = yMax; f.vy = 0; f.targetY = yMin + (yMax - yMin) * (0.2 + Math.random() * 0.5); }
+
+      // Smoothly lerp renderDir toward actual swim direction — produces a natural squish-turn
+      const wantDir = f.vx > 0 ? 1 : f.vx < 0 ? -1 : (f.renderDir >= 0 ? 1 : -1);
+      f.renderDir += (wantDir - f.renderDir) * Math.min(1, dt * 10);
     }
   }
 
@@ -518,18 +526,26 @@
     ctx.restore();
   }
 
-  // Day/Night overlay — based on real wall clock hour
+  // Day/Night overlay
   function drawDayNight() {
-    const h = new Date().getHours();
     let alpha = 0;
-    if (h >= 22 || h < 5)      alpha = 0.32;   // deep night
-    else if (h >= 20 || h < 7) alpha = 0.16;   // dusk / dawn
+    let isDeepNight = false;
+    if (lightMode === 'day') {
+      return; // full daylight, no overlay
+    } else if (lightMode === 'night') {
+      alpha = 0.32;
+      isDeepNight = true;
+    } else {
+      const h = new Date().getHours();
+      if (h >= 22 || h < 5)      { alpha = 0.32; isDeepNight = true; }
+      else if (h >= 20 || h < 7) { alpha = 0.16; }
+    }
     if (alpha === 0) return;
     ctx.save();
     ctx.globalAlpha = alpha;
     ctx.fillStyle = '#000d1a';
     ctx.fillRect(0, 0, W, H);
-    if (h >= 22 || h < 5) {
+    if (isDeepNight) {
       ctx.globalAlpha = 0.06;
       ctx.fillStyle = '#c8e0ff';
       ctx.beginPath();
@@ -722,7 +738,7 @@
   // Used before sprite loads. Sprite path handled via SPRITE_SPECIES.
   function drawArowanaCanvas(f) {
     const phase = f.tailPhase;
-    const dir = f.vx >= 0 ? 1 : -1;
+    const dir = f.renderDir || 1;
     const L = 145, Hh = 17;       // very elongated — 8:1 ratio
     const wag = Math.sin(phase) * 0.3;
 
@@ -889,7 +905,7 @@
   // large cichlid mouth, ocellus spot near tail.
   function drawOscar(f) {
     const phase = f.tailPhase;
-    const dir = f.vx >= 0 ? 1 : -1;
+    const dir = f.renderDir || 1;
     const { patches } = f.visualParams;
     const L = 65, Bh = 52;
     const wag = Math.sin(phase) * 0.22;
@@ -1050,7 +1066,7 @@
   function drawGeneric(f) {
     const d = SPECIES_DEF[f.species] || SPECIES_DEF.goldfish;
     const phase = f.tailPhase;
-    const dir = f.vx >= 0 ? 1 : -1;
+    const dir = f.renderDir || 1;
     const L = d.len, Hh = d.height;
     const wag = Math.sin(phase) * 0.28;
 
@@ -1107,8 +1123,8 @@
   }
 
   // ===================== GENERIC SPRITE FISH =====================
-  // Handles any species in SPRITE_SPECIES: crops from sheet, applies color filter,
-  // splits into body + tail with wag animation.
+  // 3-section rendering: front body (rigid) → mid-posterior (subtle wave) → tail (full wag).
+  // Mid and tail use hierarchical transforms so section boundaries are seamless.
   function drawSpriteSheetFish(f) {
     const def = SPRITE_SPECIES[f.species];
     if (!def) return;
@@ -1116,67 +1132,110 @@
     if (!sprite) return;
 
     const phase = f.tailPhase;
-    const dir   = f.vx >= 0 ? 1 : -1;
     const { targetH, tailRatio, facesLeft } = def;
 
-    // Pixel crop from the source sheet
     const sx = def.fx * sprite.width,  sy = def.fy * sprite.height;
     const sw = def.fw * sprite.width,  sh = def.fh * sprite.height;
 
-    // Derive targetW from real sprite aspect ratio — preserves proportions correctly
-    const targetW = targetH * (sw / sh);
-    const tailW   = targetW * tailRatio;
-    const OVERLAP = Math.max(5, Math.round(targetH * 0.06));
+    const targetW  = targetH * (sw / sh);
+    const tailW    = targetW * tailRatio;
+    const midW     = targetW * 0.24;     // posterior body section (24% of width)
+    const OVERLAP  = Math.max(5, Math.round(targetH * 0.06));
+
+    // Per-species body flexibility; phase offset creates traveling S-wave head→tail
+    const midAmp   = SPECIES_MID_AMP[f.species] || 0.07;
+    const midAngle = Math.sin(phase - Math.PI / 5) * midAmp;
+    const tailAngle = Math.sin(phase) * 0.22;
+
+    const gs = f.growthScale || 1.0;
+    // renderDir is a float [-1,1] — near 0 produces a natural squish as the fish turns
+    const scaleX = (facesLeft ? -1 : 1) * (f.renderDir || 1) * gs;
 
     ctx.save();
     ctx.translate(f.x, f.y + Math.sin(phase * 0.7) * 1.5);
     if (f.visualParams && f.visualParams.colorFilter) { ctx.filter = f.visualParams.colorFilter; }
-    // facesLeft → original image has head-LEFT → scale(-dir) to swim correctly
-    // growthScale applied here so body and tail both scale proportionally
-    const gs = f.growthScale || 1.0;
-    ctx.scale((facesLeft ? -dir : dir) * gs, gs);
+    ctx.scale(scaleX, gs);
     ctx.rotate(Math.atan2(f.vy, Math.abs(f.vx) + 0.01) * 0.2);
 
     if (facesLeft) {
-      // Tail is at the RIGHT of the image (x = +targetW/2)
-      const pivotX = targetW / 2 - tailW;
-      // Body
+      // Head at -targetW/2 (left), tail at +targetW/2 (right)
+      const pivotTail = targetW / 2 - tailW;
+      const pivotMid  = targetW / 2 - tailW - midW;
+
+      // 1. Front body / head — no rotation
       ctx.save();
       ctx.beginPath();
-      ctx.rect(-targetW / 2, -targetH / 2 - 4, targetW - tailW + OVERLAP, targetH + 8);
+      ctx.rect(-targetW / 2, -targetH / 2 - 4, targetW - tailW - midW + OVERLAP, targetH + 8);
       ctx.clip();
       ctx.drawImage(sprite, sx, sy, sw, sh, -targetW / 2, -targetH / 2, targetW, targetH);
       ctx.restore();
-      // Tail (wag around pivot)
+
+      // 2. Mid + Tail — mid rotation applied first; tail nested within it for seamless joint
       ctx.save();
-      ctx.translate(pivotX, 0);
-      ctx.rotate(Math.sin(phase) * 0.22);
-      ctx.translate(-pivotX, 0);
+      ctx.translate(pivotMid, 0);
+      ctx.rotate(midAngle);
+      ctx.translate(-pivotMid, 0);
+
+      // 2a. Mid body (posterior wave)
+      ctx.save();
       ctx.beginPath();
-      ctx.rect(pivotX - OVERLAP, -targetH / 2 - 4, tailW + OVERLAP, targetH + 8);
+      ctx.rect(pivotMid - OVERLAP, -targetH / 2 - 4, midW + 2 * OVERLAP, targetH + 8);
       ctx.clip();
       ctx.drawImage(sprite, sx, sy, sw, sh, -targetW / 2, -targetH / 2, targetW, targetH);
       ctx.restore();
+
+      // 2b. Tail — nested in mid's rotated frame; pivot is at tail-root inside that frame
+      ctx.save();
+      ctx.translate(pivotTail, 0);
+      ctx.rotate(tailAngle);
+      ctx.translate(-pivotTail, 0);
+      ctx.beginPath();
+      ctx.rect(pivotTail - OVERLAP, -targetH / 2 - 4, tailW + OVERLAP, targetH + 8);
+      ctx.clip();
+      ctx.drawImage(sprite, sx, sy, sw, sh, -targetW / 2, -targetH / 2, targetW, targetH);
+      ctx.restore();
+
+      ctx.restore(); // end mid rotation
+
     } else {
-      // Tail is at the LEFT of the image (x = -targetW/2)
-      const pivotX = -targetW / 2 + tailW;
-      // Body
+      // Head at +targetW/2 (right), tail at -targetW/2 (left)
+      const pivotTail = -targetW / 2 + tailW;
+      const pivotMid  = -targetW / 2 + tailW + midW;
+
+      // 1. Front body / head — no rotation
       ctx.save();
       ctx.beginPath();
-      ctx.rect(pivotX - OVERLAP, -targetH / 2 - 4, targetW - tailW + OVERLAP, targetH + 8);
+      ctx.rect(pivotMid - OVERLAP, -targetH / 2 - 4, targetW - tailW - midW + OVERLAP, targetH + 8);
       ctx.clip();
       ctx.drawImage(sprite, sx, sy, sw, sh, -targetW / 2, -targetH / 2, targetW, targetH);
       ctx.restore();
-      // Tail (wag around pivot)
+
+      // 2. Mid + Tail — hierarchical
       ctx.save();
-      ctx.translate(pivotX, 0);
-      ctx.rotate(Math.sin(phase) * 0.22);
-      ctx.translate(-pivotX, 0);
+      ctx.translate(pivotMid, 0);
+      ctx.rotate(midAngle);
+      ctx.translate(-pivotMid, 0);
+
+      // 2a. Mid body
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(pivotTail - OVERLAP, -targetH / 2 - 4, midW + 2 * OVERLAP, targetH + 8);
+      ctx.clip();
+      ctx.drawImage(sprite, sx, sy, sw, sh, -targetW / 2, -targetH / 2, targetW, targetH);
+      ctx.restore();
+
+      // 2b. Tail — nested in mid's frame
+      ctx.save();
+      ctx.translate(pivotTail, 0);
+      ctx.rotate(tailAngle);
+      ctx.translate(-pivotTail, 0);
       ctx.beginPath();
       ctx.rect(-targetW / 2, -targetH / 2 - 4, tailW + OVERLAP, targetH + 8);
       ctx.clip();
       ctx.drawImage(sprite, sx, sy, sw, sh, -targetW / 2, -targetH / 2, targetW, targetH);
       ctx.restore();
+
+      ctx.restore(); // end mid rotation
     }
     ctx.restore();
   }
@@ -1321,10 +1380,45 @@
   cleanBtn.addEventListener('click', () => {
     if (cleanCooldown > 0) return;
     waste.length = 0;
-    cleanCooldown = 300;  // 5-minute cooldown
+    cleanCooldown = 300;
     cleanBtn.innerHTML = '<i class="fa-solid fa-broom"></i> Cleaned!';
     setTimeout(() => { cleanBtn.innerHTML = '<i class="fa-solid fa-broom"></i> Clean'; }, 2000);
   });
+
+  const resetBtn = document.getElementById('resetBtn');
+  resetBtn.addEventListener('click', () => {
+    const defaults = [
+      { species: 'arowana', colorVariant: 'silver' },
+      { species: 'oscar',   colorVariant: 'tiger'  },
+      { species: 'oscar',   colorVariant: 'albino' },
+    ];
+    fish.length = 0;
+    defaults.forEach(d => {
+      const f = makeFish(d.species, d.colorVariant);
+      fish.push(f);
+      clampFish(f);
+    });
+    const typeText = aquariumType === 'saltwater' ? 'Saltwater' : 'Freshwater';
+    label.innerHTML = `<i class="fa-solid fa-fish"></i> ${typeText} · ${fish.length} fish`;
+    vscode.postMessage({ type: 'resetFish', fish: defaults });
+  });
+
+  const lightBtn = document.getElementById('lightBtn');
+  const LIGHT_MODES = ['auto', 'day', 'night'];
+  const LIGHT_LABELS = {
+    auto:  '<i class="fa-solid fa-clock-rotate-left"></i> Auto',
+    day:   '<i class="fa-solid fa-sun"></i> Day',
+    night: '<i class="fa-solid fa-moon"></i> Night',
+  };
+  function updateLightBtn() {
+    lightBtn.innerHTML = LIGHT_LABELS[lightMode];
+  }
+  lightBtn.addEventListener('click', () => {
+    const idx = LIGHT_MODES.indexOf(lightMode);
+    lightMode = LIGHT_MODES[(idx + 1) % LIGHT_MODES.length];
+    updateLightBtn();
+  });
+  updateLightBtn();
 
   window.addEventListener('message', (e) => {
     const msg = e.data;
