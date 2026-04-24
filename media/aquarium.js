@@ -142,10 +142,10 @@
     silverdollar: { sheet: 'silverdollar', fx: 0,    fy: 0, fw: 1,    fh: 1, targetH: 72,  facesLeft: false, tailRatio: 0.20 },
     giantgourami: { sheet: 'giantgourami', fx: 0,    fy: 0, fw: 1,    fh: 1, targetH: 88,  facesLeft: false, tailRatio: 0.21 },
     blackmoor:    { sheet: 'blackmoor',    fx: 0,    fy: 0, fw: 1,    fh: 1, targetH: 44,  facesLeft: true,  tailRatio: 0.25 },
-    lionhead:     { sheet: 'lionhead',     fx: 0,    fy: 0, fw: 1,    fh: 1, targetH: 46,  facesLeft: true,  tailRatio: 0.28 },
+    lionhead:     { sheet: 'lionhead',     fx: 0,    fy: 0, fw: 1,    fh: 1, targetH: 46,  facesLeft: false, tailRatio: 0.28 },
     shubunkin:    { sheet: 'shubukin',     fx: 0,    fy: 0, fw: 1,    fh: 1, targetH: 42,  facesLeft: false, tailRatio: 0.30 },
     calico:       { sheet: 'calico',       fx: 0,    fy: 0, fw: 1,    fh: 1, targetH: 48,  facesLeft: true,  tailRatio: 0.22 },
-    redcap:       { sheet: 'redcap',       fx: 0,    fy: 0, fw: 1,    fh: 1, targetH: 44,  facesLeft: true,  tailRatio: 0.26 },
+    redcap:       { sheet: 'redcap',       fx: 0,    fy: 0, fw: 1,    fh: 1, targetH: 44,  facesLeft: false, tailRatio: 0.26 },
   };
 
   // Color variants per species — CSS filter strings
