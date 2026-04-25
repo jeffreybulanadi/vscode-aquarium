@@ -37,6 +37,10 @@
   let cleanCooldown = 0;     // seconds until Clean button re-enables
   let tooltipData = null;    // { lines, x, y, expires (ms) }
   let lightMode = 'auto';    // 'auto' | 'day' | 'night'
+  const ZOOM_STEPS = [1.0, 1.5, 2.0];
+  let zoomIdx = 0;
+  let targetZoom = 1.0;
+  let currentZoom = 1.0;
   const bubbles = [];
   const plants = [];
   const pellets = [];
@@ -430,6 +434,7 @@
     }
 
     cleanCooldown = Math.max(0, cleanCooldown - dt);
+    currentZoom += (targetZoom - currentZoom) * Math.min(1, dt * 7);
 
     // ---- Fish update (index loop so we can splice dead fish) ----
     for (let i = fish.length - 1; i >= 0; i--) {
@@ -1393,6 +1398,10 @@
   }
 
   function render(t) {
+    ctx.save();
+    ctx.translate(W / 2, H / 2);
+    ctx.scale(currentZoom, currentZoom);
+    ctx.translate(-W / 2, -H / 2);
     drawBackground(t);
     drawPlants(t);
     drawWaste();
@@ -1402,6 +1411,7 @@
     for (const f of fish) drawFish(f);
     drawHungerIndicators(t);
     drawDayNight();
+    ctx.restore();
     drawTooltip();
   }
 
@@ -1432,7 +1442,10 @@
 
   canvas.addEventListener('click', (e) => {
     const rect = canvas.getBoundingClientRect();
-    const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+    const sx = e.clientX - rect.left, sy = e.clientY - rect.top;
+    // Inverse-transform screen coords → world coords (accounts for zoom)
+    const mx = (sx - W / 2) / currentZoom + W / 2;
+    const my = (sy - H / 2) / currentZoom + H / 2;
     // Click on a fish → show tooltip instead of dropping food
     const hit = fish.find(f => !f.dead && Math.hypot(f.x - mx, f.y - my) < 45);
     if (hit) {
@@ -1446,7 +1459,7 @@
           moodStr,
           `Loves: ${pref}`,
         ],
-        x: mx, y: my,
+        x: sx, y: sy,   // tooltip in screen space (drawn outside zoom transform)
         expires: performance.now() + 4000,
       };
       return;
@@ -1527,6 +1540,14 @@
     updateLightBtn();
   });
   updateLightBtn();
+
+  const zoomBtn = document.getElementById('zoomBtn');
+  const ZOOM_LABELS = ['1x', '1.5x', '2x'];
+  zoomBtn.addEventListener('click', () => {
+    zoomIdx = (zoomIdx + 1) % ZOOM_STEPS.length;
+    targetZoom = ZOOM_STEPS[zoomIdx];
+    zoomBtn.innerHTML = `<i class="fa-solid fa-magnifying-glass-plus"></i> ${ZOOM_LABELS[zoomIdx]}`;
+  });
 
   window.addEventListener('message', (e) => {
     const msg = e.data;
