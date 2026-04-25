@@ -38,8 +38,8 @@
   let tooltipData = null;    // { lines, x, y, expires (ms) }
   let lightMode = 'auto';    // 'auto' | 'day' | 'night'
   // Scales every sprite by this factor at render time — no physics changes needed.
-  // Increase to taste (1.5 = 50% bigger, 2.0 = double). Matching Ctrl+ zoom clarity.
-  const SPRITE_SCALE = 2.0;
+  // 1.5 = 50% bigger (2.25x pixel area). Matching Ctrl+ zoom clarity without 4x fill cost.
+  const SPRITE_SCALE = 1.5;
 
   const ZOOM_STEPS = [1.0, 1.5, 2.0];
   let zoomIdx = 0;
@@ -121,6 +121,29 @@
 
   // Chroma-key removal (dead code preserved for future use — not called in runtime)
   // function removeColorBackground(img, tolerance) { ... }
+
+  // Pre-bake every non-trivial color variant into its own offscreen canvas.
+  // Eliminates ctx.filter on the main canvas context (major GPU compositing cost).
+  function prebakeVariants() {
+    for (const [species, variants] of Object.entries(SPECIES_COLOR_VARIANTS)) {
+      const def = SPRITE_SPECIES[species];
+      if (!def) continue;
+      const baseSprite = SPRITES[def.sheet];
+      if (!baseSprite) continue;
+      for (const variant of variants) {
+        if (!variant.filter) continue;
+        const key = def.sheet + ':' + variant.id;
+        if (SPRITES[key]) continue;
+        const oc = document.createElement('canvas');
+        oc.width = baseSprite.width;
+        oc.height = baseSprite.height;
+        const oc2 = oc.getContext('2d');
+        oc2.filter = variant.filter;
+        oc2.drawImage(baseSprite, 0, 0);
+        SPRITES[key] = oc;
+      }
+    }
+  }
 
   function loadSprites() {
     const assets = window.FISH_ASSETS || {};
@@ -349,6 +372,11 @@
       variant = variants[Math.floor(Math.random() * variants.length)];
     }
     const base = { colorVariant: variant ? variant.id : 'default', colorFilter: variant ? variant.filter : '' };
+    // Point to pre-baked filtered sprite (set by prebakeVariants); checked at draw time.
+    if (variant && variant.filter) {
+      const def = SPRITE_SPECIES[species];
+      if (def) base.prebakeKey = def.sheet + ':' + variant.id;
+    }
     if (species === 'oscar') {
       // Pre-compute orange patch positions once — avoid per-frame Math.random flicker
       const L = 65, Bh = 52;
@@ -1249,8 +1277,12 @@
   function drawSpriteSheetFish(f) {
     const def = SPRITE_SPECIES[f.species];
     if (!def) return;
-    const sprite = SPRITES[def.sheet];
-    if (!sprite) return;
+    const baseSprite = SPRITES[def.sheet];
+    if (!baseSprite) return;
+
+    // Use pre-baked color-filtered sprite when available — avoids ctx.filter per frame.
+    const pbKey = f.visualParams && f.visualParams.prebakeKey;
+    const sprite = (pbKey && SPRITES[pbKey]) || baseSprite;
 
     const phase = f.tailPhase;
     const { tailRatio, facesLeft } = def;
@@ -1275,7 +1307,8 @@
 
     ctx.save();
     ctx.translate(f.x, f.y + Math.sin(phase * 0.7) * 1.5);
-    if (f.visualParams && f.visualParams.colorFilter) { ctx.filter = f.visualParams.colorFilter; }
+    // Only fall back to ctx.filter if pre-baking wasn't available (shouldn't happen at runtime).
+    if (!pbKey && f.visualParams && f.visualParams.colorFilter) { ctx.filter = f.visualParams.colorFilter; }
     ctx.scale(scaleX, gs);
     ctx.rotate(Math.atan2(f.vy, Math.abs(f.vx) + 0.01) * 0.2);
 
@@ -1424,12 +1457,20 @@
     drawTooltip();
   }
 
+  // Target 30fps — imperceptible for slow-swimming fish, halves GPU fill-rate cost.
+  const FRAME_MS = 1000 / 30;
+  let lastRender = 0;
+
   function loop(now) {
+    requestAnimationFrame(loop);
+    if (document.hidden) return;              // pause when panel is not visible
+    const elapsed = now - lastRender;
+    if (elapsed < FRAME_MS) return;           // frame-rate cap
+    lastRender = now - (elapsed % FRAME_MS);  // keep timing stable
     const dt = Math.min(0.05, (now - lastTime) / 1000);
     lastTime = now;
     update(dt);
     render(now / 1000);
-    requestAnimationFrame(loop);
   }
 
   // ---------- Interaction ----------
@@ -1577,8 +1618,9 @@
 
   // ---------- Init ----------
   loadSprites().then(() => {
+    prebakeVariants();
     resize();
     vscode.postMessage({ type: 'ready' });
-    requestAnimationFrame((t) => { lastTime = t; loop(t); });
+    requestAnimationFrame((t) => { lastTime = t; lastRender = t; loop(t); });
   });
 })();
