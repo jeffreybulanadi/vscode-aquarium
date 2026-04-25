@@ -37,6 +37,10 @@
   let cleanCooldown = 0;     // seconds until Clean button re-enables
   let tooltipData = null;    // { lines, x, y, expires (ms) }
   let lightMode = 'auto';    // 'auto' | 'day' | 'night'
+  // Scales every sprite by this factor at render time — no physics changes needed.
+  // Increase to taste (1.5 = 50% bigger, 2.0 = double). Matching Ctrl+ zoom clarity.
+  const SPRITE_SCALE = 2.0;
+
   const ZOOM_STEPS = [1.0, 1.5, 2.0];
   let zoomIdx = 0;
   let targetZoom = 1.0;
@@ -291,6 +295,8 @@
     canvas.width = Math.floor(W * DPR);
     canvas.height = Math.floor(H * DPR);
     ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
     bgCanvas = null;  // invalidate baked background on resize
     seedPlants();
     fish.forEach(clampFish);
@@ -680,7 +686,9 @@
       ctx.font = urgent ? 'bold 15px sans-serif' : '13px sans-serif';
       ctx.globalAlpha = 0.85;
       ctx.fillStyle = urgent ? '#ff2020' : '#ff9900';
-      ctx.fillText('!', f.x, f.y - 52);
+      const def = SPRITE_SPECIES[f.species];
+      const yOff = def ? Math.round(def.targetH * SPRITE_SCALE * 0.55 + 10) : 52;
+      ctx.fillText('!', f.x, f.y - yOff);
     }
     ctx.restore();
   }
@@ -1245,7 +1253,8 @@
     if (!sprite) return;
 
     const phase = f.tailPhase;
-    const { targetH, tailRatio, facesLeft } = def;
+    const { tailRatio, facesLeft } = def;
+    const targetH = def.targetH * SPRITE_SCALE;
 
     const sx = def.fx * sprite.width,  sy = def.fy * sprite.height;
     const sw = def.fw * sprite.width,  sh = def.fh * sprite.height;
@@ -1381,7 +1390,7 @@
   // Soft elliptical shadow under each fish — depth cue
   function drawFishShadow(f) {
     const def = SPRITE_SPECIES[f.species];
-    const fishH = def ? def.targetH : 50;
+    const fishH = def ? def.targetH * SPRITE_SCALE : 50;
     const fishW = fishH * 2.2;
     const floorY = H - 28;
     const dist = floorY - f.y;
@@ -1447,7 +1456,12 @@
     const mx = (sx - W / 2) / currentZoom + W / 2;
     const my = (sy - H / 2) / currentZoom + H / 2;
     // Click on a fish → show tooltip instead of dropping food
-    const hit = fish.find(f => !f.dead && Math.hypot(f.x - mx, f.y - my) < 45);
+    const hit = fish.find(f => {
+      if (f.dead) return false;
+      const def = SPRITE_SPECIES[f.species];
+      const r = def ? def.targetH * SPRITE_SCALE * 0.4 : 45;
+      return Math.hypot(f.x - mx, f.y - my) < r;
+    });
     if (hit) {
       const pref = (FOOD_PREFERENCE[hit.species] || []).map(t => `${t}`).join(', ') || 'any';
       const moodStr = hit.hunger < 25 ? '😊 Happy' : hit.hunger < 50 ? '🙂 Content' : hit.hunger < 75 ? '😐 Hungry' : '😡 Starving!';
