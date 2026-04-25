@@ -28,7 +28,7 @@ const SPECIES_COLOR_VARIANTS_EXT: Record<string, string[]> = {
   peacockbass:  ['natural', 'speckled', 'butterfly'],
   knifefish:    ['natural', 'ghost', 'dark'],
   silverdollar: ['silver', 'spotted', 'red_hook'],
-  giantgourami: ['natural', 'gold', 'albino'],
+  giantgourami: ['natural', 'honey', 'albino'],
   blackmoor:    ['natural', 'telescope', 'velvet'],
   lionhead:     ['red_white', 'orange', 'calico'],
   shubunkin:    ['natural', 'blue', 'orange'],
