@@ -2,6 +2,12 @@
 
 All notable changes to VSCode Aquarium are documented in this file.
 
+## [1.5.3] - 2026-04-28
+
+### Fixed
+- Black screen regression: `zoomBtn` was referenced in `aquarium.js` but missing from `aquarium.html`, causing an uncaught TypeError that crashed the entire init script before any fish or canvas rendered
+- Removed 8 stale goldfish sprite files from `media/` root that were no longer used after the v1.5.0 species reorganization (blackmoor, calico, giantgourami, lionhead, redcap, shubukin, oscar.png, ag-rtc-pleco.png)
+
 ## [1.5.2] - 2026-04-28
 
 ### Fixed
