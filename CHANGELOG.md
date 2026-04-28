@@ -2,6 +2,42 @@
 
 All notable changes to VSCode Aquarium are documented in this file.
 
+## [1.5.0] - 2026-04-28
+
+### Added
+- **Fish Behaviors**
+  - Schooling: Cherry Barb and Silver Dollar swim in coordinated Boids formations (separation, alignment, cohesion)
+  - Territorial patrol: Oscar, Flowerhorn, Peacock Bass, and Electric Blue Ram each guard a home zone
+  - Arowana surface breach: rare upward lunge toward the water surface, mimicking real hunting behavior
+  - Arowana speed burst: spontaneous horizontal dash every 25–45s, independent of the breach
+  - Pleco substrate parking: pleco periodically rests motionless on the tank floor
+- **Predator-Prey Chase System** (purely cosmetic — no fish are harmed)
+  - Predators (Arowana, Alligator Gar, Snakehead, Indonesian Tiger) detect and charge at small fish within 280px
+  - Both predator and prey alternate between cruise and sprint phases during a chase
+  - Predator bursts to 2.8× speed every 2–3.5s; prey counter-bursts to 3.2–4.6× speed every 0.8–1.6s
+  - Cherry Barb and Electric Blue Ram flee predators and scatter naturally (each fish reacts independently)
+  - Chase ends after 3.5–5.5s or if prey escapes; both decelerate organically via velocity smoothing
+
+### Changed
+- Tank starts empty by default — no pre-spawned fish on first launch
+- Reset button clears all fish rather than restoring a default set
+- Retroactive migration: existing sessions with old default fish are cleared on upgrade
+- Fish sprite images moved to `media/fish/` subfolder; web assets remain in `media/`
+
+### Performance
+- 30 FPS cap (previously targeting 60 FPS) — halves CPU draw calls with no visible loss of animation quality
+- Pre-baked color variants: color filters applied once at startup, eliminating per-frame `ctx.filter` overhead (largest GPU win)
+- 512px sprite height cap on load — reduces VRAM usage and speeds up white-background removal ~9× for oversized source images
+- 10-fish hard limit with on-screen indicator — prevents unbounded per-frame draw calls
+- Rendering pauses automatically when the aquarium panel is hidden (zero CPU when not visible)
+- Full-resolution sprites preserved for draw-time GPU scaling — sharp at any VS Code zoom level
+
+### Fixed
+- Angelfish black color variant now renders with a correct dark silhouette filter instead of appearing as a plain shadow
+- Fish sprites stay sharp when VS Code UI is zoomed in (removed pre-scaling to a fixed pixel size)
+
+---
+
 ## [0.1.0] - 2026-04-24
 
 ### Added

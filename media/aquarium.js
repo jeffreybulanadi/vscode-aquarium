@@ -37,6 +37,14 @@
   let cleanCooldown = 0;     // seconds until Clean button re-enables
   let tooltipData = null;    // { lines, x, y, expires (ms) }
   let lightMode = 'auto';    // 'auto' | 'day' | 'night'
+  // Sprite render scale — keep at 1.0 for best performance.
+  // Increase only for debugging; every 0.5 step = ~56% more GPU fill area.
+  const SPRITE_SCALE = 1.0;
+
+  const ZOOM_STEPS = [1.0, 1.5, 2.0];
+  let zoomIdx = 0;
+  let targetZoom = 1.0;
+  let currentZoom = 1.0;
   const bubbles = [];
   const plants = [];
   const pellets = [];
@@ -46,12 +54,12 @@
   // ---------- Sprite loading ----------
   const SPRITES = {};
 
-  function removeWhiteBackground(img) {
+  function removeWhiteBackground(src) {
     const oc = document.createElement('canvas');
-    oc.width = img.naturalWidth;
-    oc.height = img.naturalHeight;
+    oc.width  = src.naturalWidth  || src.width;
+    oc.height = src.naturalHeight || src.height;
     const oc2 = oc.getContext('2d');
-    oc2.drawImage(img, 0, 0);
+    oc2.drawImage(src, 0, 0);
     const id = oc2.getImageData(0, 0, oc.width, oc.height);
     const d = id.data;
     const IW = oc.width, IH = oc.height;
@@ -114,13 +122,60 @@
   // Chroma-key removal (dead code preserved for future use — not called in runtime)
   // function removeColorBackground(img, tolerance) { ... }
 
+  // Pre-bake every non-trivial color variant into its own offscreen canvas.
+  // Source is the full-res raw sprite so drawing remains sharp at any zoom level.
+  // imageSmoothingQuality='high' on the bake context ensures the filter is applied
+  // at full resolution. Eliminates ctx.filter on the main canvas per fish per frame.
+  function prebakeVariants() {
+    for (const [species, variants] of Object.entries(SPECIES_COLOR_VARIANTS)) {
+      const def = SPRITE_SPECIES[species];
+      if (!def) continue;
+      const base = SPRITES[def.sheet];
+      if (!base) continue;
+      const sw = base.width, sh = base.height;
+      for (const variant of variants) {
+        if (!variant.filter) continue;
+        const key = def.sheet + ':' + variant.id;
+        if (SPRITES[key]) continue;
+        const bc = document.createElement('canvas');
+        bc.width = sw; bc.height = sh;
+        const bctx = bc.getContext('2d');
+        bctx.imageSmoothingEnabled = true;
+        bctx.imageSmoothingQuality = 'high';
+        bctx.filter = variant.filter;
+        bctx.drawImage(base, 0, 0, sw, sh);
+        SPRITES[key] = bc;
+      }
+    }
+  }
+
+  // Max source height before removeWhiteBackground.
+  // Largest fish renders at 160px; 512 = 3.2× headroom for any zoom.
+  // Cuts pixel-processing from ~4.2M → ~450K for oversized source images.
+  const MAX_SPRITE_H = 512;
+
   function loadSprites() {
     const assets = window.FISH_ASSETS || {};
     const keys = Object.keys(assets);
     if (keys.length === 0) { return Promise.resolve(); }
     return Promise.all(keys.map(key => new Promise(resolve => {
       const img = new Image();
-      img.onload = () => { SPRITES[key] = removeWhiteBackground(img); resolve(); };
+      img.onload = () => {
+        let source = img;
+        if (img.naturalHeight > MAX_SPRITE_H) {
+          const scale = MAX_SPRITE_H / img.naturalHeight;
+          const cw = Math.round(img.naturalWidth * scale);
+          const tmp = document.createElement('canvas');
+          tmp.width = cw; tmp.height = MAX_SPRITE_H;
+          const tctx = tmp.getContext('2d');
+          tctx.imageSmoothingEnabled = true;
+          tctx.imageSmoothingQuality = 'high';
+          tctx.drawImage(img, 0, 0, cw, MAX_SPRITE_H);
+          source = tmp;
+        }
+        SPRITES[key] = removeWhiteBackground(source);
+        resolve();
+      };
       img.onerror = resolve;
       img.src = assets[key];
     })));
@@ -130,25 +185,24 @@
   // fx/fy/fw/fh are fractions of the source sprite canvas (0-1)
   // facesLeft: head is at LEFT of image (need scale(-dir,1)); else head at RIGHT
   const SPRITE_SPECIES = {
-    arowana:      { sheet: 'arowana',      fx: 0,    fy: 0, fw: 1,    fh: 1, targetH: 160, facesLeft: true,  tailRatio: 0.22 },
-    oscar:        { sheet: 'oscar',        fx: 0,    fy: 0, fw: 1,    fh: 1, targetH: 76,  facesLeft: false, tailRatio: 0.20 },
-    snakehead:    { sheet: 'snakehead',    fx: 0,    fy: 0, fw: 1,    fh: 1, targetH: 68,  facesLeft: false, tailRatio: 0.22 },
-    alligatorgar: { sheet: 'ag',           fx: 0,    fy: 0, fw: 1,    fh: 1, targetH: 160, facesLeft: false, tailRatio: 0.22 },
-    rtcatfish:    { sheet: 'rtc',          fx: 0,    fy: 0, fw: 1,    fh: 1, targetH: 124, facesLeft: false, tailRatio: 0.25 },
-    pleco:        { sheet: 'pleco',        fx: 0,    fy: 0, fw: 1,    fh: 1, targetH: 62,  facesLeft: false, tailRatio: 0.20 },
-    flowerhorn:   { sheet: 'flowerhorn',   fx: 0,    fy: 0, fw: 1,    fh: 1, targetH: 88,  facesLeft: true,  tailRatio: 0.22 },
-    peacockbass:  { sheet: 'peacockbass',  fx: 0,    fy: 0, fw: 1,    fh: 1, targetH: 82,  facesLeft: true,  tailRatio: 0.22 },
-    knifefish:    { sheet: 'knifefish',    fx: 0,    fy: 0, fw: 1,    fh: 1, targetH: 84,  facesLeft: false, tailRatio: 0.28 },
-    silverdollar: { sheet: 'silverdollar', fx: 0,    fy: 0, fw: 1,    fh: 1, targetH: 72,  facesLeft: false, tailRatio: 0.20 },
-    giantgourami: { sheet: 'giantgourami', fx: 0,    fy: 0, fw: 1,    fh: 1, targetH: 88,  facesLeft: false, tailRatio: 0.21 },
-    blackmoor:    { sheet: 'blackmoor',    fx: 0,    fy: 0, fw: 1,    fh: 1, targetH: 44,  facesLeft: true,  tailRatio: 0.25 },
-    lionhead:     { sheet: 'lionhead',     fx: 0,    fy: 0, fw: 1,    fh: 1, targetH: 46,  facesLeft: false, tailRatio: 0.28 },
-    shubunkin:    { sheet: 'shubukin',     fx: 0,    fy: 0, fw: 1,    fh: 1, targetH: 42,  facesLeft: false, tailRatio: 0.30 },
-    calico:       { sheet: 'calico',       fx: 0,    fy: 0, fw: 1,    fh: 1, targetH: 48,  facesLeft: true,  tailRatio: 0.22 },
-    redcap:       { sheet: 'redcap',       fx: 0,    fy: 0, fw: 1,    fh: 1, targetH: 44,  facesLeft: false, tailRatio: 0.26 },
+    arowana:      { sheet: 'arowana',      fx: 0, fy: 0, fw: 1, fh: 1, targetH: 160, facesLeft: true,  tailRatio: 0.22 },
+    oscar:        { sheet: 'oscar',        fx: 0, fy: 0, fw: 1, fh: 1, targetH: 76,  facesLeft: false, tailRatio: 0.20 },
+    snakehead:    { sheet: 'snakehead',    fx: 0, fy: 0, fw: 1, fh: 1, targetH: 68,  facesLeft: false, tailRatio: 0.22 },
+    alligatorgar: { sheet: 'ag',           fx: 0, fy: 0, fw: 1, fh: 1, targetH: 160, facesLeft: false, tailRatio: 0.22 },
+    rtcatfish:    { sheet: 'rtc',          fx: 0, fy: 0, fw: 1, fh: 1, targetH: 124, facesLeft: false, tailRatio: 0.25 },
+    pleco:        { sheet: 'pleco',        fx: 0, fy: 0, fw: 1, fh: 1, targetH: 62,  facesLeft: false, tailRatio: 0.20 },
+    flowerhorn:   { sheet: 'flowerhorn',   fx: 0, fy: 0, fw: 1, fh: 1, targetH: 88,  facesLeft: true,  tailRatio: 0.22 },
+    peacockbass:  { sheet: 'peacockbass',  fx: 0, fy: 0, fw: 1, fh: 1, targetH: 82,  facesLeft: true,  tailRatio: 0.22 },
+    knifefish:    { sheet: 'knifefish',    fx: 0, fy: 0, fw: 1, fh: 1, targetH: 84,  facesLeft: false, tailRatio: 0.28 },
+    silverdollar:    { sheet: 'silverdollar',    fx: 0, fy: 0, fw: 1, fh: 1, targetH: 72,  facesLeft: false, tailRatio: 0.20 },
+    tilapia:         { sheet: 'tilapia',         fx: 0, fy: 0, fw: 1, fh: 1, targetH: 72,  facesLeft: false, tailRatio: 0.22 },
+    indonesiantiger: { sheet: 'indonesiantiger', fx: 0, fy: 0, fw: 1, fh: 1, targetH: 84,  facesLeft: true,  tailRatio: 0.24 },
+    electricblueram: { sheet: 'electricblueram', fx: 0, fy: 0, fw: 1, fh: 1, targetH: 48,  facesLeft: false, tailRatio: 0.20 },
+    diamondstingray: { sheet: 'diamondstingray', fx: 0, fy: 0, fw: 1, fh: 1, targetH: 88,  facesLeft: true,  tailRatio: 0.20 },
+    cherrybarb:      { sheet: 'cherrybarb',      fx: 0, fy: 0, fw: 1, fh: 1, targetH: 46,  facesLeft: false, tailRatio: 0.22 },
+    angelfish:       { sheet: 'angelfish',       fx: 0, fy: 0, fw: 1, fh: 1, targetH: 94,  facesLeft: false, tailRatio: 0.18 },
   };
 
-  // Color variants per species — CSS filter strings
   const SPECIES_COLOR_VARIANTS = {
     arowana:      [{ id: 'silver',    filter: '' },
                    { id: 'golden',    filter: 'sepia(0.8) saturate(2.2) hue-rotate(18deg) brightness(1.1)' },
@@ -181,27 +235,30 @@
     silverdollar: [{ id: 'silver',    filter: '' },
                    { id: 'spotted',   filter: 'contrast(1.3) brightness(0.92)' },
                    { id: 'red_hook',  filter: 'hue-rotate(-15deg) saturate(1.6) brightness(1.0)' }],
-    giantgourami: [{ id: 'natural',   filter: '' },
-                   { id: 'gold',      filter: 'sepia(0.7) saturate(2.8) hue-rotate(18deg) brightness(1.1)' },
-                   { id: 'albino',    filter: 'sepia(0.15) brightness(1.65) saturate(0.35)' }],
-    blackmoor:    [{ id: 'natural',   filter: '' },
-                   { id: 'telescope', filter: 'brightness(0.80) contrast(1.2)' },
-                   { id: 'velvet',    filter: 'hue-rotate(200deg) saturate(1.3) brightness(0.70)' }],
-    lionhead:     [{ id: 'red_white', filter: '' },
-                   { id: 'orange',    filter: 'hue-rotate(10deg) saturate(1.5) brightness(1.05)' },
-                   { id: 'calico',    filter: 'hue-rotate(-15deg) saturate(1.8) contrast(1.1)' }],
-    shubunkin:    [{ id: 'natural',   filter: '' },
-                   { id: 'blue',      filter: 'hue-rotate(160deg) saturate(1.4) brightness(0.95)' },
-                   { id: 'orange',    filter: 'hue-rotate(20deg) saturate(2.0) brightness(1.05)' }],
-    calico:       [{ id: 'natural',   filter: '' },
-                   { id: 'orange_black', filter: 'hue-rotate(10deg) saturate(1.6) contrast(1.15)' },
-                   { id: 'red_white', filter: 'sepia(0.2) saturate(1.8) brightness(1.1)' }],
-    redcap:       [{ id: 'natural',   filter: '' },
-                   { id: 'orange_cap',filter: 'hue-rotate(12deg) saturate(1.6) brightness(1.05)' },
-                   { id: 'black_cap', filter: 'hue-rotate(180deg) saturate(0.5) brightness(0.80)' }],
+    tilapia:      [{ id: 'natural',   filter: '' },
+                   { id: 'blue',      filter: 'hue-rotate(192deg) saturate(1.4) brightness(0.9)' },
+                   { id: 'red',       filter: 'hue-rotate(-10deg) saturate(1.9) brightness(1.06)' }],
+    indonesiantiger: [
+                   { id: 'natural',   filter: '' },
+                   { id: 'dark',      filter: 'brightness(0.72) contrast(1.35) saturate(0.88)' },
+                   { id: 'amber',     filter: 'sepia(0.35) saturate(1.6) hue-rotate(10deg) brightness(1.05)' }],
+    electricblueram: [
+                   { id: 'blue',      filter: '' },
+                   { id: 'german',    filter: 'hue-rotate(38deg) saturate(0.82) brightness(1.12)' },
+                   { id: 'gold',      filter: 'sepia(0.5) saturate(2.0) hue-rotate(18deg) brightness(1.1)' }],
+    diamondstingray: [
+                   { id: 'natural',   filter: '' },
+                   { id: 'dark',      filter: 'brightness(0.75) contrast(1.25) saturate(0.85)' },
+                   { id: 'albino',    filter: 'sepia(0.28) brightness(1.7) saturate(0.42)' }],
+    cherrybarb:   [{ id: 'red',       filter: '' },
+                   { id: 'female',    filter: 'sepia(0.6) hue-rotate(22deg) saturate(0.65) brightness(1.1)' },
+                   { id: 'albino',    filter: 'sepia(0.15) brightness(1.6) saturate(0.28)' }],
+    angelfish:    [{ id: 'silver',    filter: '' },
+                   { id: 'gold',      filter: 'sepia(0.6) saturate(2.2) hue-rotate(14deg) brightness(1.1)' },
+                   { id: 'black',     filter: 'brightness(0.28) contrast(1.25) saturate(0.10)' },
+                   { id: 'marble',    filter: 'contrast(1.5) hue-rotate(8deg) saturate(0.72)' }],
   };
 
-  // Y zone fractions (fraction of canvas height) — controls vertical swim territory
   const SPECIES_ZONE = {
     alligatorgar: { yMin: 0.08, yMax: 0.55 },
     arowana:      { yMin: 0.22, yMax: 0.34 },
@@ -213,42 +270,50 @@
     peacockbass:  { yMin: 0.15, yMax: 0.65 },
     knifefish:    { yMin: 0.35, yMax: 0.82 },
     silverdollar: { yMin: 0.20, yMax: 0.70 },
-    giantgourami: { yMin: 0.25, yMax: 0.75 },
-    blackmoor:    { yMin: 0.20, yMax: 0.78 },
-    lionhead:     { yMin: 0.20, yMax: 0.78 },
-    shubunkin:    { yMin: 0.15, yMax: 0.72 },
-    calico:       { yMin: 0.20, yMax: 0.78 },
-    redcap:       { yMin: 0.20, yMax: 0.78 },
+    tilapia:         { yMin: 0.15, yMax: 0.75 },
+    indonesiantiger: { yMin: 0.10, yMax: 0.65 },
+    electricblueram: { yMin: 0.45, yMax: 0.85 },
+    diamondstingray: { yMin: 0.84, yMax: 0.97 },
+    cherrybarb:      { yMin: 0.12, yMax: 0.68 },
+    angelfish:       { yMin: 0.18, yMax: 0.78 },
   };
 
-  // Base swim speeds (px/s) — differentiated per species behavior
   const SPECIES_SPEED = {
     arowana: 65, snakehead: 42,
     alligatorgar: 28, oscar: 22, flowerhorn: 18,
-    peacockbass: 35, knifefish: 28, silverdollar: 30, giantgourami: 12,
+    peacockbass: 35, knifefish: 28, silverdollar: 30,
     rtcatfish: 14, pleco: 6,
-    blackmoor: 12, lionhead: 15, shubunkin: 22, calico: 14, redcap: 17,
+    tilapia: 24, indonesiantiger: 32, electricblueram: 18,
+    diamondstingray: 10, cherrybarb: 38, angelfish: 16,
   };
 
-  // Mid-body undulation amplitude (radians) — higher = more flexible body wave
   const SPECIES_MID_AMP = {
     arowana: 0.09, snakehead: 0.10,
     alligatorgar: 0.04, oscar: 0.07, flowerhorn: 0.07,
-    peacockbass: 0.08, knifefish: 0.12, silverdollar: 0.06, giantgourami: 0.05,
+    peacockbass: 0.08, knifefish: 0.12, silverdollar: 0.06,
     rtcatfish: 0.08, pleco: 0.03,
-    blackmoor: 0.04, lionhead: 0.04, shubunkin: 0.06, calico: 0.04, redcap: 0.05,
+    tilapia: 0.07, indonesiantiger: 0.09, electricblueram: 0.08,
+    diamondstingray: 0.02, cherrybarb: 0.10, angelfish: 0.05,
   };
 
-  // Hunger decay rate (units/sec). Fish hunger 0→100 over time;
-  // rates set so fish survive ~2-3 hrs without feeding before dying.
   const HUNGER_DECAY = {
     arowana: 0.010, oscar: 0.013, snakehead: 0.011,
     alligatorgar: 0.008, rtcatfish: 0.010, pleco: 0.006, flowerhorn: 0.013,
-    peacockbass: 0.012, knifefish: 0.009, silverdollar: 0.010, giantgourami: 0.008,
-    blackmoor: 0.009, lionhead: 0.010, shubunkin: 0.010, calico: 0.009, redcap: 0.010,
+    peacockbass: 0.012, knifefish: 0.009, silverdollar: 0.010,
+    tilapia: 0.012, indonesiantiger: 0.011, electricblueram: 0.014,
+    diamondstingray: 0.008, cherrybarb: 0.015, angelfish: 0.010,
   };
 
-  // Preferred food per species — correct food earns +15 coins & more satiety
+  // True schooling fish — Boids (separation + alignment + cohesion) during wander.
+  const SCHOOLING_SPECIES = new Set(['cherrybarb', 'silverdollar']);
+  // Territorial cichlids — slowly patrol a home zone rather than wandering freely.
+  const TERRITORIAL_SPECIES = new Set(['oscar', 'flowerhorn', 'peacockbass', 'electricblueram']);
+  // Predator/prey for mock-chase behavior (purely cosmetic — prey never gets eaten).
+  const PREDATOR_SPECIES = new Set(['arowana', 'alligatorgar', 'snakehead', 'indonesiantiger']);
+  const PREY_SPECIES     = new Set(['cherrybarb', 'electricblueram']);
+  const CHASE_RADIUS = 280; // px — predator notices prey within this range
+  const FLEE_RADIUS  = 220; // px — prey detects and flees from predator
+
   const FOOD_PREFERENCE = {
     arowana:      ['cricket', 'shrimp'],
     oscar:        ['cricket', 'superworm'],
@@ -260,23 +325,22 @@
     peacockbass:  ['shrimp', 'cricket'],
     knifefish:    ['shrimp', 'superworm'],
     silverdollar: ['pellet', 'cricket'],
-    giantgourami: ['pellet', 'superworm'],
-    blackmoor:    ['pellet', 'shrimp'],
-    lionhead:     ['pellet', 'shrimp'],
-    shubunkin:    ['pellet', 'cricket'],
-    calico:       ['pellet', 'shrimp'],
-    redcap:       ['pellet', 'shrimp'],
+    tilapia:      ['pellet', 'cricket'],
+    indonesiantiger: ['shrimp', 'cricket'],
+    electricblueram: ['pellet', 'shrimp'],
+    diamondstingray: ['shrimp', 'superworm'],
+    cherrybarb:   ['pellet', 'cricket'],
+    angelfish:    ['shrimp', 'pellet'],
   };
 
-  // Friendly species names (shown in tooltip)
   const SPECIES_LABEL = {
     arowana: 'Arowana', oscar: 'Oscar Cichlid', snakehead: 'Snakehead',
     alligatorgar: 'Alligator Gar',
     rtcatfish: 'Red-Tailed Catfish', pleco: 'Pleco', flowerhorn: 'Flowerhorn',
-    peacockbass: 'Peacock Bass', knifefish: 'Knifefish',
-    silverdollar: 'Silver Dollar', giantgourami: 'Giant Gourami',
-    blackmoor: 'Black Moor', lionhead: 'Lionhead', shubunkin: 'Shubunkin',
-    calico: 'Calico Oranda', redcap: 'Red Cap Oranda',
+    peacockbass: 'Peacock Bass', knifefish: 'Knifefish', silverdollar: 'Silver Dollar',
+    tilapia: 'Tilapia', indonesiantiger: 'Indonesian Tiger Fish',
+    electricblueram: 'Electric Blue Ram', diamondstingray: 'Diamond Stingray',
+    cherrybarb: 'Cherry Barb', angelfish: 'Angelfish',
   };
 
   // ---------- Resize ----------
@@ -287,6 +351,8 @@
     canvas.width = Math.floor(W * DPR);
     canvas.height = Math.floor(H * DPR);
     ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
     bgCanvas = null;  // invalidate baked background on resize
     seedPlants();
     fish.forEach(clampFish);
@@ -339,6 +405,11 @@
       variant = variants[Math.floor(Math.random() * variants.length)];
     }
     const base = { colorVariant: variant ? variant.id : 'default', colorFilter: variant ? variant.filter : '' };
+    // prebakeKey points to a pre-baked filtered canvas (set after loadSprites).
+    if (variant && variant.filter) {
+      const def = SPRITE_SPECIES[species];
+      if (def) base.prebakeKey = def.sheet + ':' + variant.id;
+    }
     if (species === 'oscar') {
       // Pre-compute orange patch positions once — avoid per-frame Math.random flicker
       const L = 65, Bh = 52;
@@ -389,9 +460,9 @@
   }
 
   function rebuildFish(list) {
-    fish = list
-      .filter(entry => entry.species === 'arowana' || !!SPRITE_SPECIES[entry.species])
-      .map(entry => makeFish(entry.species, entry.colorVariant));
+    // Filter out removed/unknown species so stale settings don't cause blank fish
+    const valid = list.filter(entry => !!SPRITE_SPECIES[entry.species]);
+    fish = valid.map(entry => makeFish(entry.species, entry.colorVariant));
     fish.forEach(clampFish);
     const typeText = aquariumType === 'saltwater' ? 'Saltwater' : 'Freshwater';
     label.innerHTML = `<i class="fa-solid fa-fish"></i> ${typeText} · ${fish.length} fish`;
@@ -430,6 +501,10 @@
     }
 
     cleanCooldown = Math.max(0, cleanCooldown - dt);
+    currentZoom += (targetZoom - currentZoom) * Math.min(1, dt * 7);
+
+    // Hoist performance.now() — used for speed variation; calling per-fish per-frame is wasteful.
+    const perfNow = performance.now();
 
     // ---- Fish update (index loop so we can splice dead fish) ----
     for (let i = fish.length - 1; i >= 0; i--) {
@@ -513,15 +588,195 @@
           if (Math.random() < 0.25) f.vx = -f.vx;
         }
         const spd = SPECIES_SPEED[f.species] || 25;
-        const baseSpeed = spd + Math.sin(performance.now() / 1500 + f.tailPhase) * spd * 0.3;
+        const baseSpeed = spd + Math.sin(perfNow / 1500 + f.tailPhase) * spd * 0.3;
         desiredVx = Math.sign(f.vx || 1) * baseSpeed;
         // Organic vertical weave: gentle sine tied to tail phase
         const weave = Math.sin(f.tailPhase * 0.4) * baseSpeed * 0.06;
         desiredVy = (f.targetY - f.y) * 0.3 + weave;
       }
 
-      f.vx += (desiredVx - f.vx) * Math.min(1, dt * 2);
-      f.vy += (desiredVy - f.vy) * Math.min(1, dt * 1.5);
+      // ---- Schooling: cherrybarb, silverdollar (Boids) ----
+      // Only during wander (not chasing food). O(n) per fish, n ≤ 10, safe at 30fps.
+      if (SCHOOLING_SPECIES.has(f.species) && !f.target) {
+        let sepX = 0, sepY = 0, sepN = 0;
+        let sumVx = 0, sumVy = 0, sumX = 0, sumY = 0, nbN = 0;
+        const SEP_R = 55, PERC_R = 160;
+        for (const o of fish) {
+          if (o === f || o.species !== f.species || o.dead) continue;
+          const dx = f.x - o.x, dy = f.y - o.y;
+          const d  = Math.hypot(dx, dy) || 1;
+          if (d < SEP_R) { sepX += (dx / d) * (1 - d / SEP_R); sepY += (dy / d) * (1 - d / SEP_R); sepN++; }
+          if (d < PERC_R) { sumVx += o.vx; sumVy += o.vy; sumX += o.x; sumY += o.y; nbN++; }
+        }
+        if (nbN > 0) {
+          const spd  = SPECIES_SPEED[f.species] || 30;
+          const zone = SPECIES_ZONE[f.species] || { yMin: 0.12, yMax: 0.68 };
+          // Cohesion: toward school center, Y clamped to zone so school can't fight boundary
+          const cx = sumX / nbN - f.x;
+          const cy = Math.max(H * zone.yMin, Math.min(H * zone.yMax, sumY / nbN)) - f.y;
+          const cd = Math.hypot(cx, cy) || 1;
+          // Alignment: match average school heading
+          const avgVxN = sumVx / nbN, avgVyN = sumVy / nbN;
+          const av = Math.hypot(avgVxN, avgVyN) || 1;
+          let bvx = (cx / cd) * spd * 0.5 + (avgVxN / av) * spd * 0.8;
+          let bvy = (cy / cd) * spd * 0.5 + (avgVyN / av) * spd * 0.8;
+          // Separation: push away from fish that are too close
+          if (sepN > 0) { bvx += sepX * spd * 2.2; bvy += sepY * spd * 2.2; }
+          desiredVx = desiredVx * 0.4 + bvx * 0.6;
+          desiredVy = desiredVy * 0.4 + bvy * 0.6;
+        }
+      }
+
+      // ---- Territorial patrol: oscar, flowerhorn, peacockbass, electricblueram ----
+      // Establishes a home territory at first spawn; gently pulls fish back if too far.
+      if (TERRITORIAL_SPECIES.has(f.species) && !f.target) {
+        if (!f.territory) f.territory = { x: f.x, y: f.y };
+        const tdx = f.territory.x - f.x;
+        if (Math.abs(tdx) > 90) desiredVx += Math.sign(tdx) * 7;
+        // Slow sinusoidal orbit around territory Y — gives cichlid the feel of patrolling
+        const orbY = f.territory.y + Math.sin(perfNow / 4500 + f.tailPhase) * 38;
+        f.targetY = f.targetY * 0.97 + orbY * 0.03;
+      }
+
+      // ---- Arowana surface breach ----
+      // Rare (~every 60-80s): surges toward surface then settles back. Mimics hunting.
+      if (f.species === 'arowana' && !f.target) {
+        if (!f.breaching && Math.random() < dt * 0.013) {
+          f.breaching = true; f.breachTimer = 2.2;
+        }
+        if (f.breaching) {
+          f.breachTimer -= dt;
+          desiredVy = f.breachTimer > 1.1 ? -85 : 22;
+          if (f.breachTimer <= 0) f.breaching = false;
+        }
+      }
+
+      // ---- Arowana horizontal burst ----
+      // Quick speed dash (~every 30-50s) — separate from breach; mimics striking at prey.
+      // Disabled during breach and when actively chasing prey.
+      if (f.species === 'arowana' && !f.target && !f.breaching && !f.chaseTarget) {
+        if (f.burstTimer === undefined) f.burstTimer = 0;
+        f.burstTimer -= dt;
+        if (!f.bursting && f.burstTimer <= 0 && Math.random() < dt * 0.025) {
+          f.bursting = true; f.burstRemain = 0.55;
+          f.burstTimer = 25 + Math.random() * 20;
+        }
+        if (f.bursting) {
+          f.burstRemain -= dt;
+          desiredVx *= 3.2;
+          if (f.burstRemain <= 0) f.bursting = false;
+        }
+      }
+
+      // ---- Predator chase (arowana, alligatorgar, snakehead, indonesiantiger) ----
+      // Occasionally locks onto a small prey fish and charges toward it.
+      // Purely cosmetic — predator never actually eats the prey fish.
+      if (PREDATOR_SPECIES.has(f.species) && !f.target) {
+        if (f.chaseCooldown === undefined) f.chaseCooldown = 10 + Math.random() * 15;
+        f.chaseCooldown -= dt;
+        // Validate existing chase target (clear if prey died, removed, or duration expired)
+        if (f.chaseTarget && (f.chaseTarget.dead || !fish.includes(f.chaseTarget) || f.chaseDuration <= 0)) {
+          f.chaseTarget = null; f.chaseBursting = false;
+          f.chaseCooldown = 18 + Math.random() * 20;
+        }
+        // Acquire a new prey target when cooldown expires
+        if (!f.chaseTarget && f.chaseCooldown <= 0) {
+          let nearest = null, nearestD2 = CHASE_RADIUS * CHASE_RADIUS;
+          for (const o of fish) {
+            if (!PREY_SPECIES.has(o.species) || o.dead) continue;
+            const d2 = (o.x - f.x) ** 2 + (o.y - f.y) ** 2;
+            if (d2 < nearestD2) { nearestD2 = d2; nearest = o; }
+          }
+          if (nearest) {
+            f.chaseTarget     = nearest;
+            f.chaseDuration   = 3.5 + Math.random() * 2;
+            f.chaseCooldown   = 22 + Math.random() * 20;
+            f.chaseBurstTimer = 0.8 + Math.random() * 1.0; // delay before first sprint
+            f.chaseBursting   = false;
+          } else {
+            f.chaseCooldown = 8 + Math.random() * 8; // no prey in tank, retry soon
+          }
+        }
+        // Steer toward prey — alternates cruise (1.5×) and sprint bursts (2.8×).
+        // Burst fires every 2-3.5s and lasts 0.4-0.6s, giving the chase a natural rhythm.
+        // When chase ends, desiredVx/Vy reverts to wander; existing velocity lerp decelerates predator.
+        if (f.chaseTarget) {
+          f.chaseDuration -= dt;
+          const dx = f.chaseTarget.x - f.x, dy = f.chaseTarget.y - f.y;
+          const d  = Math.hypot(dx, dy) || 1;
+          if (d > CHASE_RADIUS * 1.4) {
+            // Prey escaped — give up; clear burst so next chase starts clean
+            f.chaseTarget = null; f.chaseBursting = false; f.chaseCooldown = 15 + Math.random() * 15;
+          } else {
+            if (f.chaseBurstTimer === undefined) f.chaseBurstTimer = 1.0 + Math.random() * 1.0;
+            f.chaseBurstTimer -= dt;
+            if (f.chaseBurstTimer <= 0) {
+              f.chaseBursting    = true;
+              f.chaseBurstRemain = 0.4 + Math.random() * 0.2;
+              f.chaseBurstTimer  = 2.0 + Math.random() * 1.5;
+            }
+            if (f.chaseBursting) {
+              f.chaseBurstRemain -= dt;
+              if (f.chaseBurstRemain <= 0) f.chaseBursting = false;
+            }
+            const chaseMult = f.chaseBursting ? 2.8 : 1.5;
+            const spd = (SPECIES_SPEED[f.species] || 40) * chaseMult;
+            desiredVx = (dx / d) * spd;
+            desiredVy = (dy / d) * spd;
+          }
+        }
+      }
+
+      // ---- Prey flee (cherrybarb, electricblueram) ----
+      // Per-frame: each fish independently finds its nearest predator and bolts away.
+      // Schools naturally scatter since each member reacts to the same predator differently.
+      // Flee uses alternating bursts (like the predator) — base 2.2× with sprint spikes at 3.2-4.6×.
+      // When predator exits FLEE_RADIUS the block stops overriding desiredVx/Vy;
+      // existing velocity lerp naturally decelerates the prey back to normal swim speed.
+      if (PREY_SPECIES.has(f.species) && !f.target) {
+        let pdx = 0, pdy = 0, minPredD = Infinity;
+        for (const o of fish) {
+          if (!PREDATOR_SPECIES.has(o.species) || o.dead) continue;
+          const dx = f.x - o.x, dy = f.y - o.y;
+          const d  = Math.hypot(dx, dy) || 1;
+          if (d < minPredD) { minPredD = d; pdx = dx; pdy = dy; }
+        }
+        if (minPredD < FLEE_RADIUS) {
+          // Burst timer only decrements while actually fleeing so each chase gets fresh cycle.
+          if (f.fleeBurstTimer === undefined) f.fleeBurstTimer = 0.5 + Math.random() * 0.8;
+          f.fleeBurstTimer -= dt;
+          if (f.fleeBurstTimer <= 0) {
+            f.fleeBursting    = true;
+            f.fleeBurstRemain = 0.3 + Math.random() * 0.15;
+            f.fleeBurstTimer  = 0.8 + Math.random() * 0.8;
+          }
+          if (f.fleeBursting) {
+            f.fleeBurstRemain -= dt;
+            if (f.fleeBurstRemain <= 0) f.fleeBursting = false;
+          }
+          const baseMultiplier = minPredD < 80 ? 3.2 : 2.2;
+          const panicMult      = f.fleeBursting ? baseMultiplier * 1.45 : baseMultiplier;
+          const spd = (SPECIES_SPEED[f.species] || 38) * panicMult;
+          const fd  = Math.hypot(pdx, pdy) || 1;
+          desiredVx = (pdx / fd) * spd;
+          desiredVy = (pdy / fd) * spd;
+          f.tailPhase += dt * (f.fleeBursting ? 6 : 4); // tail beats faster in sprint
+        }
+      }
+
+      // ---- Pleco substrate parking ----
+      // Occasionally parks motionless on the bottom (simulates sucker-mouth resting).
+      if (f.species === 'pleco' && !f.target) {
+        if (f.parkTimer === undefined) f.parkTimer = 0;
+        f.parkTimer -= dt;
+        if (f.parkTimer <= 0) {
+          f.parked    = Math.random() < 0.3;
+          f.parkTimer = f.parked ? 3 + Math.random() * 5 : 2 + Math.random() * 4;
+        }
+        if (f.parked) { desiredVx = 0; desiredVy = 0; }
+      }
+
+      f.vx += (desiredVx - f.vx) * Math.min(1, dt * 2);      f.vy += (desiredVy - f.vy) * Math.min(1, dt * 1.5);
       if (f.species === 'arowana')  f.vy *= 0.72;  // glide horizontally at surface
       if (f.species === 'pleco')    f.vy *= 0.30;  // hugs the bottom
       if (f.species === 'rtcatfish') f.vy *= 0.45; // mostly bottom, occasional vertical drift
@@ -592,6 +847,12 @@
     for (const p of plants) {
       ctx.save();
       ctx.translate(p.x, H - 28);
+      // One gradient per plant (vertical, base → tip) reused across all blades.
+      // Previously one gradient per blade = ~70 GPU allocs/frame; now ~10.
+      const grad = ctx.createLinearGradient(0, 0, 0, -p.height);
+      grad.addColorStop(0,   p.stopColors[0]);
+      grad.addColorStop(0.5, p.stopColors[1]);
+      grad.addColorStop(1,   p.stopColors[2]);
       const master = Math.sin(t * 1.2 + p.sway);
       for (let b = 0; b < p.blades; b++) {
         const ox = p.bladeOffsets[b];
@@ -601,12 +862,6 @@
         const cx1 = ox + sw * h * 0.30, cy1 = -h * 0.38;
         const cx2 = tx - sw * h * 0.08, cy2 = -h * 0.72;
         const hw  = Math.max(1.5, 4.2 - Math.abs(ox) * 0.05);
-
-        // Re-use cached stop color strings — no template literals / GC per blade
-        const grad = ctx.createLinearGradient(ox, 0, tx, ty);
-        grad.addColorStop(0,   p.stopColors[0]);
-        grad.addColorStop(0.5, p.stopColors[1]);
-        grad.addColorStop(1,   p.stopColors[2]);
 
         ctx.beginPath();
         ctx.moveTo(ox - hw, -1);
@@ -675,7 +930,9 @@
       ctx.font = urgent ? 'bold 15px sans-serif' : '13px sans-serif';
       ctx.globalAlpha = 0.85;
       ctx.fillStyle = urgent ? '#ff2020' : '#ff9900';
-      ctx.fillText('!', f.x, f.y - 52);
+      const def = SPRITE_SPECIES[f.species];
+      const yOff = def ? Math.round(def.targetH * SPRITE_SCALE * 0.55 + 10) : 52;
+      ctx.fillText('!', f.x, f.y - yOff);
     }
     ctx.restore();
   }
@@ -1231,120 +1488,104 @@
   }
 
   // ===================== GENERIC SPRITE FISH =====================
-  // 3-section rendering: front body (rigid) → mid-posterior (subtle wave) → tail (full wag).
-  // Mid and tail use hierarchical transforms so section boundaries are seamless.
+  // 3-section rendering: rigid head/body → mid-body wave → tail wag.
+  // GPU scales from full-res source (or full-res pre-baked variant canvas) to
+  // targetW×targetH at draw time — sharp at any VS Code zoom level.
+  // ctx.filter is never set on the main context; color variants come from
+  // pre-baked full-res offscreen canvases (the main GPU win vs original).
   function drawSpriteSheetFish(f) {
     const def = SPRITE_SPECIES[f.species];
     if (!def) return;
-    const sprite = SPRITES[def.sheet];
+
+    const pbKey = f.visualParams && f.visualParams.prebakeKey;
+    const sprite = (pbKey && SPRITES[pbKey]) || SPRITES[def.sheet];
     if (!sprite) return;
 
-    const phase = f.tailPhase;
-    const { targetH, tailRatio, facesLeft } = def;
+    const phase   = f.tailPhase;
+    const { tailRatio, facesLeft } = def;
+    const sw      = sprite.width;
+    const sh      = sprite.height;
+    const targetH = def.targetH;
+    const targetW = Math.round(targetH * sw / sh);
+    const tailW   = Math.round(targetW * tailRatio);
+    const midW    = Math.round(targetW * 0.24);
+    const OVERLAP = Math.max(4, Math.round(targetH * 0.06));
 
-    const sx = def.fx * sprite.width,  sy = def.fy * sprite.height;
-    const sw = def.fw * sprite.width,  sh = def.fh * sprite.height;
-
-    const targetW  = targetH * (sw / sh);
-    const tailW    = targetW * tailRatio;
-    const midW     = targetW * 0.24;     // posterior body section (24% of width)
-    const OVERLAP  = Math.max(5, Math.round(targetH * 0.06));
-
-    // Per-species body flexibility; phase offset creates traveling S-wave head→tail
-    const midAmp   = SPECIES_MID_AMP[f.species] || 0.07;
-    const midAngle = Math.sin(phase - Math.PI / 5) * midAmp;
+    const midAmp    = SPECIES_MID_AMP[f.species] || 0.07;
+    const midAngle  = Math.sin(phase - Math.PI / 5) * midAmp;
     const tailAngle = Math.sin(phase) * 0.22;
 
-    const gs = f.growthScale || 1.0;
-    // renderDir is a float [-1,1] — near 0 produces a natural squish as the fish turns
+    const gs     = f.growthScale || 1.0;
     const scaleX = (facesLeft ? -1 : 1) * (f.renderDir || 1) * gs;
 
     ctx.save();
     ctx.translate(f.x, f.y + Math.sin(phase * 0.7) * 1.5);
-    if (f.visualParams && f.visualParams.colorFilter) { ctx.filter = f.visualParams.colorFilter; }
     ctx.scale(scaleX, gs);
     ctx.rotate(Math.atan2(f.vy, Math.abs(f.vx) + 0.01) * 0.2);
 
     if (facesLeft) {
-      // Head at -targetW/2 (left), tail at +targetW/2 (right)
       const pivotTail = targetW / 2 - tailW;
       const pivotMid  = targetW / 2 - tailW - midW;
 
-      // 1. Front body / head — no rotation
       ctx.save();
       ctx.beginPath();
       ctx.rect(-targetW / 2, -targetH / 2 - 4, targetW - tailW - midW + OVERLAP, targetH + 8);
       ctx.clip();
-      ctx.drawImage(sprite, sx, sy, sw, sh, -targetW / 2, -targetH / 2, targetW, targetH);
+      ctx.drawImage(sprite, 0, 0, sw, sh, -targetW / 2, -targetH / 2, targetW, targetH);
       ctx.restore();
 
-      // 2. Mid + Tail — mid rotation applied first; tail nested within it for seamless joint
       ctx.save();
-      ctx.translate(pivotMid, 0);
-      ctx.rotate(midAngle);
-      ctx.translate(-pivotMid, 0);
+      ctx.translate(pivotMid, 0); ctx.rotate(midAngle); ctx.translate(-pivotMid, 0);
 
-      // 2a. Mid body (posterior wave)
       ctx.save();
       ctx.beginPath();
       ctx.rect(pivotMid - OVERLAP, -targetH / 2 - 4, midW + 2 * OVERLAP, targetH + 8);
       ctx.clip();
-      ctx.drawImage(sprite, sx, sy, sw, sh, -targetW / 2, -targetH / 2, targetW, targetH);
+      ctx.drawImage(sprite, 0, 0, sw, sh, -targetW / 2, -targetH / 2, targetW, targetH);
       ctx.restore();
 
-      // 2b. Tail — nested in mid's rotated frame; pivot is at tail-root inside that frame
       ctx.save();
-      ctx.translate(pivotTail, 0);
-      ctx.rotate(tailAngle);
-      ctx.translate(-pivotTail, 0);
+      ctx.translate(pivotTail, 0); ctx.rotate(tailAngle); ctx.translate(-pivotTail, 0);
       ctx.beginPath();
       ctx.rect(pivotTail - OVERLAP, -targetH / 2 - 4, tailW + OVERLAP, targetH + 8);
       ctx.clip();
-      ctx.drawImage(sprite, sx, sy, sw, sh, -targetW / 2, -targetH / 2, targetW, targetH);
+      ctx.drawImage(sprite, 0, 0, sw, sh, -targetW / 2, -targetH / 2, targetW, targetH);
       ctx.restore();
 
-      ctx.restore(); // end mid rotation
+      ctx.restore();
 
     } else {
-      // Head at +targetW/2 (right), tail at -targetW/2 (left)
       const pivotTail = -targetW / 2 + tailW;
       const pivotMid  = -targetW / 2 + tailW + midW;
 
-      // 1. Front body / head — no rotation
       ctx.save();
       ctx.beginPath();
       ctx.rect(pivotMid - OVERLAP, -targetH / 2 - 4, targetW - tailW - midW + OVERLAP, targetH + 8);
       ctx.clip();
-      ctx.drawImage(sprite, sx, sy, sw, sh, -targetW / 2, -targetH / 2, targetW, targetH);
+      ctx.drawImage(sprite, 0, 0, sw, sh, -targetW / 2, -targetH / 2, targetW, targetH);
       ctx.restore();
 
-      // 2. Mid + Tail — hierarchical
       ctx.save();
-      ctx.translate(pivotMid, 0);
-      ctx.rotate(midAngle);
-      ctx.translate(-pivotMid, 0);
+      ctx.translate(pivotMid, 0); ctx.rotate(midAngle); ctx.translate(-pivotMid, 0);
 
-      // 2a. Mid body
       ctx.save();
       ctx.beginPath();
       ctx.rect(pivotTail - OVERLAP, -targetH / 2 - 4, midW + 2 * OVERLAP, targetH + 8);
       ctx.clip();
-      ctx.drawImage(sprite, sx, sy, sw, sh, -targetW / 2, -targetH / 2, targetW, targetH);
+      ctx.drawImage(sprite, 0, 0, sw, sh, -targetW / 2, -targetH / 2, targetW, targetH);
       ctx.restore();
 
-      // 2b. Tail — nested in mid's frame
       ctx.save();
-      ctx.translate(pivotTail, 0);
-      ctx.rotate(tailAngle);
-      ctx.translate(-pivotTail, 0);
+      ctx.translate(pivotTail, 0); ctx.rotate(tailAngle); ctx.translate(-pivotTail, 0);
       ctx.beginPath();
       ctx.rect(-targetW / 2, -targetH / 2 - 4, tailW + OVERLAP, targetH + 8);
       ctx.clip();
-      ctx.drawImage(sprite, sx, sy, sw, sh, -targetW / 2, -targetH / 2, targetW, targetH);
+      ctx.drawImage(sprite, 0, 0, sw, sh, -targetW / 2, -targetH / 2, targetW, targetH);
       ctx.restore();
 
-      ctx.restore(); // end mid rotation
+      ctx.restore();
     }
+
     ctx.restore();
   }
 
@@ -1353,10 +1594,8 @@
 
     if (f.dead) {
       ctx.save();
-      // Fade out over last 3 seconds of 8-second death animation
       ctx.globalAlpha = f.deathTimer < 5 ? 1 : Math.max(0, 1 - (f.deathTimer - 5) / 3);
       ctx.filter = 'grayscale(0.85) brightness(0.6)';
-      // Flip fish upside-down around its y centre
       ctx.translate(f.x, f.y);
       ctx.scale(1, -1);
       ctx.translate(-f.x, -f.y);
@@ -1373,51 +1612,75 @@
     else drawGeneric(f);
   }
 
-  // Soft elliptical shadow under each fish — depth cue
-  function drawFishShadow(f) {
-    const def = SPRITE_SPECIES[f.species];
-    const fishH = def ? def.targetH : 50;
-    const fishW = fishH * 2.2;
+  // Soft elliptical shadow under each fish — all fish drawn in one save/restore block
+  function drawAllShadows() {
+    if (fish.length === 0) return;
     const floorY = H - 28;
-    const dist = floorY - f.y;
-    if (dist > H * 0.65) return;  // too far up — shadow invisible
-    const alpha = Math.max(0, 0.22 - dist / (H * 0.65) * 0.22);
-    const scaleX = Math.max(0.3, 1 - dist / (H * 0.55));
     ctx.save();
-    ctx.globalAlpha = alpha;
     ctx.fillStyle = '#000';
-    ctx.beginPath();
-    ctx.ellipse(f.x, floorY - 2, fishW * 0.42 * scaleX, 5, 0, 0, Math.PI * 2);
-    ctx.fill();
+    for (const f of fish) {
+      const def = SPRITE_SPECIES[f.species];
+      const fishH = def ? def.targetH * SPRITE_SCALE : 50;
+      const fishW = fishH * 2.2;
+      const dist = floorY - f.y;
+      if (dist > H * 0.65) continue;
+      const alpha = Math.max(0, 0.22 - dist / (H * 0.65) * 0.22);
+      if (alpha <= 0) continue;
+      const scaleX = Math.max(0.3, 1 - dist / (H * 0.55));
+      ctx.globalAlpha = alpha;
+      ctx.beginPath();
+      ctx.ellipse(f.x, floorY - 2, fishW * 0.42 * scaleX, 5, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
     ctx.restore();
   }
 
   function render(t) {
+    const zoomed = Math.abs(currentZoom - 1.0) > 0.005;
+    if (zoomed) {
+      ctx.save();
+      ctx.translate(W / 2, H / 2);
+      ctx.scale(currentZoom, currentZoom);
+      ctx.translate(-W / 2, -H / 2);
+    }
     drawBackground(t);
     drawPlants(t);
     drawWaste();
     drawBubbles();
     drawFood();
-    for (const f of fish) drawFishShadow(f);
+    drawAllShadows();
     for (const f of fish) drawFish(f);
     drawHungerIndicators(t);
     drawDayNight();
+    if (zoomed) ctx.restore();
     drawTooltip();
   }
 
+  // 30fps cap + pause when hidden — cuts rAF callbacks by ~50% vs uncapped
+  // and eliminates all CPU/GPU work when the panel is not visible.
+  const FRAME_MS = 1000 / 30;
+  let lastRender = 0;
+
   function loop(now) {
+    requestAnimationFrame(loop);
+    if (document.hidden) return;
+    const elapsed = now - lastRender;
+    if (elapsed < FRAME_MS) return;
+    lastRender = now - (elapsed % FRAME_MS);
     const dt = Math.min(0.05, (now - lastTime) / 1000);
     lastTime = now;
     update(dt);
     render(now / 1000);
-    requestAnimationFrame(loop);
   }
 
   // ---------- Interaction ----------
   function dropFood(x, y, type) {
     const foodType = type || currentFood || 'pellet';
     const count = foodType === 'superworm' ? 3 : foodType === 'cricket' ? 4 : 6;
-    for (let i = 0; i < count; i++) {
+    // Cap total pellets to keep O(fish x pellets) cost bounded
+    const MAX_PELLETS = 18;
+    const toAdd = Math.min(count, Math.max(0, MAX_PELLETS - pellets.length));
+    for (let i = 0; i < toAdd; i++) {
       pellets.push({
         x: x + (Math.random() - 0.5) * 50,
         y: y + (Math.random() - 0.5) * 10,
@@ -1432,9 +1695,17 @@
 
   canvas.addEventListener('click', (e) => {
     const rect = canvas.getBoundingClientRect();
-    const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+    const sx = e.clientX - rect.left, sy = e.clientY - rect.top;
+    // Inverse-transform screen coords → world coords (accounts for zoom)
+    const mx = (sx - W / 2) / currentZoom + W / 2;
+    const my = (sy - H / 2) / currentZoom + H / 2;
     // Click on a fish → show tooltip instead of dropping food
-    const hit = fish.find(f => !f.dead && Math.hypot(f.x - mx, f.y - my) < 45);
+    const hit = fish.find(f => {
+      if (f.dead) return false;
+      const def = SPRITE_SPECIES[f.species];
+      const r = def ? def.targetH * SPRITE_SCALE * 0.4 : 45;
+      return Math.hypot(f.x - mx, f.y - my) < r;
+    });
     if (hit) {
       const pref = (FOOD_PREFERENCE[hit.species] || []).map(t => `${t}`).join(', ') || 'any';
       const moodStr = hit.hunger < 25 ? '😊 Happy' : hit.hunger < 50 ? '🙂 Content' : hit.hunger < 75 ? '😐 Hungry' : '😡 Starving!';
@@ -1446,7 +1717,7 @@
           moodStr,
           `Loves: ${pref}`,
         ],
-        x: mx, y: my,
+        x: sx, y: sy,   // tooltip in screen space (drawn outside zoom transform)
         expires: performance.now() + 4000,
       };
       return;
@@ -1469,15 +1740,27 @@
     }
   });
 
+  const MAX_FISH = 10;
+
   spawnPanel.querySelectorAll('.spawn-variants button').forEach(btn => {
     btn.addEventListener('click', () => {
+      if (fish.length >= MAX_FISH) {
+        spawnPanel.classList.add('hidden');
+        // Flash the label to signal the tank is full
+        label.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> Tank full (${MAX_FISH}/${MAX_FISH})`;
+        setTimeout(() => {
+          const typeText = aquariumType === 'saltwater' ? 'Saltwater' : 'Freshwater';
+          label.innerHTML = `<i class="fa-solid fa-fish"></i> ${typeText} · ${fish.length} fish`;
+        }, 2500);
+        return;
+      }
       const species = btn.dataset.species;
       const variant = btn.dataset.variant;
       const f = makeFish(species, variant);
       fish.push(f);
       clampFish(f);
       const typeText = aquariumType === 'saltwater' ? 'Saltwater' : 'Freshwater';
-      label.innerHTML = `<i class="fa-solid fa-fish"></i> ${typeText} · ${fish.length} fish`;
+      label.innerHTML = `<i class="fa-solid fa-fish"></i> ${typeText} · ${fish.length}${fish.length >= MAX_FISH ? `/${MAX_FISH} 🔴` : ''} fish`;
       vscode.postMessage({ type: 'spawnFish', species, colorVariant: variant });
       spawnPanel.classList.add('hidden');
     });
@@ -1495,20 +1778,10 @@
 
   const resetBtn = document.getElementById('resetBtn');
   resetBtn.addEventListener('click', () => {
-    const defaults = [
-      { species: 'arowana', colorVariant: 'silver' },
-      { species: 'oscar',   colorVariant: 'tiger'  },
-      { species: 'oscar',   colorVariant: 'albino' },
-    ];
     fish.length = 0;
-    defaults.forEach(d => {
-      const f = makeFish(d.species, d.colorVariant);
-      fish.push(f);
-      clampFish(f);
-    });
     const typeText = aquariumType === 'saltwater' ? 'Saltwater' : 'Freshwater';
-    label.innerHTML = `<i class="fa-solid fa-fish"></i> ${typeText} · ${fish.length} fish`;
-    vscode.postMessage({ type: 'resetFish', fish: defaults });
+    label.innerHTML = `<i class="fa-solid fa-fish"></i> ${typeText} · 0 fish`;
+    vscode.postMessage({ type: 'resetFish', fish: [] });
   });
 
   const lightBtn = document.getElementById('lightBtn');
@@ -1528,6 +1801,14 @@
   });
   updateLightBtn();
 
+  const zoomBtn = document.getElementById('zoomBtn');
+  const ZOOM_LABELS = ['1x', '1.5x', '2x'];
+  zoomBtn.addEventListener('click', () => {
+    zoomIdx = (zoomIdx + 1) % ZOOM_STEPS.length;
+    targetZoom = ZOOM_STEPS[zoomIdx];
+    zoomBtn.innerHTML = `<i class="fa-solid fa-magnifying-glass-plus"></i> ${ZOOM_LABELS[zoomIdx]}`;
+  });
+
   window.addEventListener('message', (e) => {
     const msg = e.data;
     if (msg.type === 'state') {
@@ -1542,8 +1823,9 @@
 
   // ---------- Init ----------
   loadSprites().then(() => {
+    prebakeVariants();
     resize();
     vscode.postMessage({ type: 'ready' });
-    requestAnimationFrame((t) => { lastTime = t; loop(t); });
+    requestAnimationFrame((t) => { lastTime = t; lastRender = t; loop(t); });
   });
 })();
