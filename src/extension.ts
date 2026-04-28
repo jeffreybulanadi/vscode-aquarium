@@ -1,4 +1,4 @@
-import * as vscode from 'vscode';
+﻿import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -39,7 +39,7 @@ let panel: vscode.WebviewPanel | undefined;
 let statusBar: vscode.StatusBarItem | undefined;
 
 export async function activate(context: vscode.ExtensionContext) {
-  // Status bar — always visible summary of tank health
+  // Status bar - always visible summary of tank health
   statusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
   statusBar.command = 'aquarium.open';
   statusBar.tooltip = 'Open Aquarium';

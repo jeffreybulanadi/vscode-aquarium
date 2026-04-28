@@ -1,6 +1,6 @@
 # VSCode Aquarium
 
-A freshwater aquarium that lives inside your VS Code editor. Sprite-animated fish swim, feed, and grow while you code.
+A living freshwater aquarium inside your VS Code editor. Sprite-animated fish swim, feed, grow, school, patrol, and chase each other while you code.
 
 ![VSCode Aquarium Preview](screenshots/preview.png)
 
@@ -14,25 +14,59 @@ A freshwater aquarium that lives inside your VS Code editor. Sprite-animated fis
 
 ## Overview
 
-VSCode Aquarium is an interactive freshwater tank simulation that runs as a panel inside your editor. Fish have swim zones, feeding behaviors, and growth cycles that play out in real time while you work.
+VSCode Aquarium is an interactive freshwater tank simulation that runs as a panel inside VS Code. Fish have unique swim zones, feeding behaviors, growth cycles, species-specific movement patterns, and predator-prey interactions that play out in real time while you work.
+
+---
+
+## Fish Roster
+
+| Species | Variants | Swim Zone | Diet | Behavior |
+|---|---|---|---|---|
+| Arowana | Silver, Golden, Red, Green | Surface | Cricket, Shrimp | Surface breach, speed burst |
+| Oscar Cichlid | Tiger, Red, Albino | Mid-tank | Cricket, Superworm | Territorial patrol |
+| Snakehead | Olive, Giant, Rainbow | Upper-mid | Cricket, Shrimp | Predator chase |
+| Alligator Gar | Olive, Spotted, Albino | Top-mid | Superworm, Shrimp | Predator chase |
+| Red-Tailed Catfish | Natural, Albino | Bottom | Superworm, Pellet | Bottom forager |
+| Pleco | Common, Royal, Gold Nugget | Gravel | Pellet | Substrate parking |
+| Flowerhorn Cichlid | Red Dragon, Golden, Kamfa, Blue | Mid-tank | Cricket, Superworm | Territorial patrol |
+| Peacock Bass | Standard, Gold | Mid-tank | Cricket, Shrimp | Territorial patrol |
+| Knifefish | Dark, Albino | Lower-mid | Superworm, Shrimp | Slow glider |
+| Silver Dollar | Silver | Mid-tank | Pellet, Superworm | Schooling |
+| Tilapia | Standard | Mid-tank | Pellet, Cricket | Steady swimmer |
+| Indonesian Tiger | Standard | Mid-tank | Cricket, Shrimp | Predator chase |
+| Electric Blue Ram | Standard | Lower-mid | Pellet, Shrimp | Territorial patrol, flees predators |
+| Diamond Stingray | Standard | Bottom | Superworm, Pellet | Bottom glider |
+| Cherry Barb | Red, Standard | Mid-tank | Pellet, Cricket | Schooling, flees predators |
+| Angelfish | Standard, Black | Mid-tank | Cricket, Superworm | Steady swimmer |
 
 ---
 
 ## Features
 
-### Sprite-Animated Fish
+### Species-Specific Behaviors
 
-- 7 freshwater species, each with unique swim zones, speeds, and diet preferences
-- 3-section body wave animation: the whole spine undulates head-to-tail, not just the tail
+Each species has distinct movement patterns beyond basic swimming:
+
+- **Schooling** - Cherry Barb and Silver Dollar form coordinated groups using Boids logic (separation, alignment, cohesion). The school scatters naturally when a predator approaches.
+- **Territorial patrol** - Oscar, Flowerhorn, Peacock Bass, and Electric Blue Ram slowly patrol a home zone instead of roaming freely.
+- **Arowana surface breach** - roughly every 60-80 seconds, the Arowana surges toward the water surface and settles back down, mimicking real hunting behavior.
+- **Arowana speed burst** - occasional horizontal dash every 25-45 seconds, independent of the breach.
+- **Pleco substrate parking** - pleco periodically parks motionless on the tank floor, simulating its natural sucker-mouth resting posture.
+- **Predator-prey chase** - Arowana, Alligator Gar, Snakehead, and Indonesian Tiger lock onto nearby Cherry Barb or Electric Blue Ram and charge. Both predator and prey alternate cruise and sprint burst speeds. The chase ends after a few seconds and both fish decelerate naturally. Purely cosmetic: no fish are harmed.
+
+### Sprite Animation
+
+- 3-section body wave: the whole spine undulates head-to-tail, not just the tail
 - Smooth direction turns: fish squish naturally when reversing instead of snapping
 - Per-species body flexibility: Arowana and Snakehead flex more, Pleco and Alligator Gar are stiff
-- Multiple color variants per species (Silver / Red / Golden / Green Arowana, Tiger / Albino Oscar, etc.)
+- Multiple color variants per species
+- Full-resolution sprites scaled by the GPU for sharpness at any VS Code zoom level
 
-### Fish Behavior
+### Hunger and Growth System
 
-- Fish grow hungry over time and need to be fed to stay healthy
+- Fish grow hungry over time (2-3 hours to starve)
 - Each species prefers specific food types; matching preferences restores more hunger
-- 4 food types available: Pellet, Superworm, Cricket, Shrimp
+- 4 food types: Pellet, Superworm, Cricket, Shrimp
 - Well-fed fish grow visibly larger, up to 150% of their base size
 - Starved fish float belly-up and fade out
 - Uneaten food leaves debris on the gravel floor
@@ -47,28 +81,13 @@ VSCode Aquarium is an interactive freshwater tank simulation that runs as a pane
 
 ### Controls and UI
 
-- In-tank spawn panel: click the Add button to spawn fish without the Command Palette
+- In-tank spawn panel: click the Add button to choose species and color variant
 - Live clock display synced to system time
 - Click any fish for a tooltip: species, hunger level, size, mood, and preferred food
-- Blinking hunger indicator above fish that need feeding
+- Blinking hunger indicator above fish that need feeding (orange at 45%+, red at 75%+)
 - Status bar item showing live fish count and coin total
+- 10-fish tank limit with a visible indicator when the tank is full
 - Responsive canvas that scales to any panel size
-
----
-
-## Fish Roster
-
-| Species | Variants | Swim Zone | Preferred Food |
-|---|---|---|---|
-| Arowana | Silver, Golden, Red, Green | Surface | Cricket, Shrimp |
-| Oscar Cichlid | Tiger, Red, Albino | Mid-tank | Cricket, Superworm |
-| Snakehead | Olive, Giant, Rainbow | Upper-mid | Cricket, Shrimp |
-| Alligator Gar | Olive, Spotted, Albino | Top-mid | Superworm, Shrimp |
-| Red-Tailed Catfish | Natural, Albino | Bottom | Superworm, Pellet |
-| Pleco | Common, Royal, Gold Nugget | Gravel | Pellet |
-| Flowerhorn Cichlid | Red Dragon, Golden, Kamfa, Blue | Mid-tank | Cricket, Superworm |
-
-Peacock Bass is temporarily removed pending a higher-quality sprite.
 
 ---
 
@@ -81,7 +100,7 @@ Peacock Bass is temporarily removed pending a higher-quality sprite.
 3. Search **VSCode Aquarium**
 4. Click Install
 
-The aquarium opens automatically on startup with a default tank containing Arowana and Oscar.
+The aquarium opens automatically on startup with an empty tank. Use the Add button or Command Palette to stock your fish.
 
 ### Feeding
 
@@ -98,7 +117,7 @@ The aquarium opens automatically on startup with a default tank containing Arowa
 |---|---|
 | Spawn a fish | Click Add in the HUD, then pick species and color variant |
 | Add via Command Palette | `Aquarium: Add Fish` |
-| Remove all fish | `Aquarium: Remove All Fish` |
+| Remove all fish | `Aquarium: Remove All Fish` or click Reset |
 | Clean tank debris | Click the Clean button (5-minute cooldown) |
 | Switch tank type | `Aquarium: Switch Aquarium Type (Fresh/Salt)` |
 | Toggle auto-open | `Aquarium: Toggle Auto-open on Startup` |
@@ -125,8 +144,8 @@ Edit via File, Preferences, Settings or directly in `settings.json`:
   "aquarium.autoOpen": true,
   "aquarium.fish": [
     { "species": "arowana",    "colorVariant": "silver" },
-    { "species": "oscar",      "colorVariant": "tiger"  },
-    { "species": "oscar",      "colorVariant": "albino" }
+    { "species": "cherrybarb", "colorVariant": "red"    },
+    { "species": "oscar",      "colorVariant": "tiger"  }
   ]
 }
 ```
@@ -135,7 +154,7 @@ Edit via File, Preferences, Settings or directly in `settings.json`:
 |---|---|---|---|
 | `aquarium.type` | string | `"freshwater"` | `"freshwater"` or `"saltwater"` |
 | `aquarium.autoOpen` | boolean | `true` | Open aquarium on every VS Code launch |
-| `aquarium.fish` | array | 3 defaults | Fish in your tank |
+| `aquarium.fish` | array | `[]` (empty) | Fish in your tank |
 
 ---
 
@@ -154,10 +173,13 @@ Edit via File, Preferences, Settings or directly in `settings.json`:
 
 ## Performance
 
-- 60 FPS target via `requestAnimationFrame`
+- 30 FPS cap via `requestAnimationFrame` with timestamp throttle
+- Color variants pre-baked at startup: no per-frame canvas filter calls
 - Background gradient pre-baked to an offscreen canvas; only the shimmer layer redraws each frame
-- Sprite white-background removal runs once at load, result cached
-- Each fish costs approximately 1-2% CPU at 60 FPS; recommended maximum is 8-10 fish
+- Sprite white-background removal runs once at load; result cached at full resolution
+- Sprites capped at 512px height on load to reduce VRAM and speed up processing
+- Rendering pauses automatically when the aquarium panel is not visible
+- 10-fish hard limit; each fish costs approximately 1-2% CPU at 30 FPS
 
 Tested on VS Code 1.75+ on Windows, macOS, and Linux.
 
@@ -191,7 +213,7 @@ vscodeaquarium/
 │   ├── aquarium.js        # Canvas render loop, fish behavior, simulation
 │   ├── aquarium.html      # Webview shell and spawn HUD
 │   ├── aquarium.css       # Styling
-│   ├── *.jpg / *.png      # Fish sprites
+│   ├── fish/              # Fish sprite images (JPG)
 │   └── fontawesome.*      # Icon fonts
 ├── out/                   # Compiled JS (git-ignored)
 ├── package.json           # Extension manifest
@@ -203,17 +225,19 @@ vscodeaquarium/
 - Canvas 2D rendering, no WebGL dependency
 - 3-section sprite animation: body clip, mid-posterior clip (rotated), tail clip nested in mid's frame, producing a seamless S-curve body wave
 - `renderDir` float per fish: lerps from -1 to +1 at 10 units/s for smooth direction turns
+- Boids schooling: separation, alignment, and cohesion forces blended with wander velocity
+- Predator-prey state machine: cooldown, acquisition, chase with burst phases, give-up with velocity decay
 - Webview IPC via `postMessage` for persistence of fish list and tank state
-- Fish state stored in VS Code `settings.json`
+- Fish state stored in VS Code `globalState` (coins, growth) and `settings.json` (fish list)
 
 ---
 
 ## Roadmap
 
-- Peacock Bass with high-quality sprite
 - Saltwater species: Clownfish, Tang, Lionfish, Pufferfish, Marine Angel
 - Tank decorations: rocks, driftwood, castles
-- Fish territorial behavior
+- More schooling species
+- Fish interaction sounds (ambient underwater audio)
 
 ---
 

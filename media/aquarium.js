@@ -1,4 +1,4 @@
-(function () {
+﻿(function () {
   'use strict';
   const vscode = acquireVsCodeApi();
   const canvas = document.getElementById('aquarium');
@@ -9,7 +9,7 @@
   const coinsLabel = document.getElementById('coinsLabel');
   const clockLabel = document.getElementById('clockLabel');
 
-  // Food selector — track which food is active
+  // Food selector - track which food is active
   let currentFood = 'pellet';
   document.querySelectorAll('.food-opt').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -19,7 +19,7 @@
     });
   });
 
-  // Live clock — update every second
+  // Live clock - update every second
   function updateClock() {
     const now = new Date();
     const h = String(now.getHours()).padStart(2, '0');
@@ -37,7 +37,7 @@
   let cleanCooldown = 0;     // seconds until Clean button re-enables
   let tooltipData = null;    // { lines, x, y, expires (ms) }
   let lightMode = 'auto';    // 'auto' | 'day' | 'night'
-  // Sprite render scale — keep at 1.0 for best performance.
+  // Sprite render scale - keep at 1.0 for best performance.
   // Increase only for debugging; every 0.5 step = ~56% more GPU fill area.
   const SPRITE_SCALE = 1.0;
 
@@ -48,7 +48,7 @@
   const bubbles = [];
   const plants = [];
   const pellets = [];
-  const waste = [];          // { x, oy, size, alpha } — uneaten food debris on gravel
+  const waste = [];          // { x, oy, size, alpha } - uneaten food debris on gravel
   let lastTime = performance.now();
 
   // ---------- Sprite loading ----------
@@ -64,7 +64,7 @@
     const d = id.data;
     const IW = oc.width, IH = oc.height;
 
-    // Pass 1 — strict flood-fill from all 4 edges.
+    // Pass 1 - strict flood-fill from all 4 edges.
     // Threshold is tight (mn > 240) so the dark outlines on cartoon/illustration
     // sprites stop the fill before it reaches the white interior of the fish body.
     function isBg(p) {
@@ -95,7 +95,7 @@
       if (py < IH - 1) { const n = pos + IW; if (!removed[n] && isBg(n * 4)) { removed[n] = 1; queue.push(n); } }
     }
 
-    // Pass 2 — feather the anti-aliased fringe.
+    // Pass 2 - feather the anti-aliased fringe.
     // Pixels adjacent to removed background with mn > 210 get partially faded
     // so the 1-2px gray anti-aliasing ring around the outline blends cleanly.
     for (let pos = 0; pos < IW * IH; pos++) {
@@ -119,7 +119,7 @@
     return oc;
   }
 
-  // Chroma-key removal (dead code preserved for future use — not called in runtime)
+  // Chroma-key removal (dead code preserved for future use - not called in runtime)
   // function removeColorBackground(img, tolerance) { ... }
 
   // Pre-bake every non-trivial color variant into its own offscreen canvas.
@@ -304,15 +304,15 @@
     diamondstingray: 0.008, cherrybarb: 0.015, angelfish: 0.010,
   };
 
-  // True schooling fish — Boids (separation + alignment + cohesion) during wander.
+  // True schooling fish - Boids (separation + alignment + cohesion) during wander.
   const SCHOOLING_SPECIES = new Set(['cherrybarb', 'silverdollar']);
-  // Territorial cichlids — slowly patrol a home zone rather than wandering freely.
+  // Territorial cichlids - slowly patrol a home zone rather than wandering freely.
   const TERRITORIAL_SPECIES = new Set(['oscar', 'flowerhorn', 'peacockbass', 'electricblueram']);
-  // Predator/prey for mock-chase behavior (purely cosmetic — prey never gets eaten).
+  // Predator/prey for mock-chase behavior (purely cosmetic - prey never gets eaten).
   const PREDATOR_SPECIES = new Set(['arowana', 'alligatorgar', 'snakehead', 'indonesiantiger']);
   const PREY_SPECIES     = new Set(['cherrybarb', 'electricblueram']);
-  const CHASE_RADIUS = 280; // px — predator notices prey within this range
-  const FLEE_RADIUS  = 220; // px — prey detects and flees from predator
+  const CHASE_RADIUS = 280; // px - predator notices prey within this range
+  const FLEE_RADIUS  = 220; // px - prey detects and flees from predator
 
   const FOOD_PREFERENCE = {
     arowana:      ['cricket', 'shrimp'],
@@ -375,7 +375,7 @@
         bladeOffsets: Array.from({length: numBlades}, (_, b) => (b - numBlades/2 + 0.5) * 9 + (Math.random()-0.5)*4),
         bladePhases:  Array.from({length: numBlades}, () => Math.random() * Math.PI * 2),
         bladeHeights: Array.from({length: numBlades}, () => 0.55 + Math.random() * 0.45),
-        // Pre-cache gradient color strings — avoids template literal per blade per frame
+        // Pre-cache gradient color strings - avoids template literal per blade per frame
         stopColors: [
           `hsl(${hue - 8},52%,13%)`,
           `hsl(${hue},65%,26%)`,
@@ -411,7 +411,7 @@
       if (def) base.prebakeKey = def.sheet + ':' + variant.id;
     }
     if (species === 'oscar') {
-      // Pre-compute orange patch positions once — avoid per-frame Math.random flicker
+      // Pre-compute orange patch positions once - avoid per-frame Math.random flicker
       const L = 65, Bh = 52;
       base.patches = [
         { x: 0.28 * L,  y: -0.28 * Bh, rx: 0.17 * L, ry: 0.22 * Bh, a: 0.3  },
@@ -446,7 +446,7 @@
       growthScale: 1.0,  // grows with feeding, max 1.5
       dead: false,
       deathTimer: 0,
-      renderDir: dir0,   // smooth direction — lerps when fish turns
+      renderDir: dir0,   // smooth direction - lerps when fish turns
     };
   }
 
@@ -503,7 +503,7 @@
     cleanCooldown = Math.max(0, cleanCooldown - dt);
     currentZoom += (targetZoom - currentZoom) * Math.min(1, dt * 7);
 
-    // Hoist performance.now() — used for speed variation; calling per-fish per-frame is wasteful.
+    // Hoist performance.now() - used for speed variation; calling per-fish per-frame is wasteful.
     const perfNow = performance.now();
 
     // ---- Fish update (index loop so we can splice dead fish) ----
@@ -525,7 +525,7 @@
         continue;
       }
 
-      // Hunger accumulates over time — 0=full, 100=starving
+      // Hunger accumulates over time - 0=full, 100=starving
       f.hunger = Math.min(100, f.hunger + (HUNGER_DECAY[f.species] || 0.010) * dt);
       if (f.hunger >= 100) {
         f.dead = true;
@@ -556,7 +556,7 @@
         const dx = f.target.x - f.x;
         const dy = f.target.y - f.y;
         const dist = Math.hypot(dx, dy) || 1;
-        // Hungrier fish swim faster toward food (range 65–130 px/s)
+        // Hungrier fish swim faster toward food (range 65-130 px/s)
         const speed = 65 + f.hunger * 0.65;
         desiredVx = (dx / dist) * speed;
         desiredVy = (dy / dist) * speed;
@@ -633,7 +633,7 @@
         if (!f.territory) f.territory = { x: f.x, y: f.y };
         const tdx = f.territory.x - f.x;
         if (Math.abs(tdx) > 90) desiredVx += Math.sign(tdx) * 7;
-        // Slow sinusoidal orbit around territory Y — gives cichlid the feel of patrolling
+        // Slow sinusoidal orbit around territory Y - gives cichlid the feel of patrolling
         const orbY = f.territory.y + Math.sin(perfNow / 4500 + f.tailPhase) * 38;
         f.targetY = f.targetY * 0.97 + orbY * 0.03;
       }
@@ -652,7 +652,7 @@
       }
 
       // ---- Arowana horizontal burst ----
-      // Quick speed dash (~every 30-50s) — separate from breach; mimics striking at prey.
+      // Quick speed dash (~every 30-50s) - separate from breach; mimics striking at prey.
       // Disabled during breach and when actively chasing prey.
       if (f.species === 'arowana' && !f.target && !f.breaching && !f.chaseTarget) {
         if (f.burstTimer === undefined) f.burstTimer = 0;
@@ -670,7 +670,7 @@
 
       // ---- Predator chase (arowana, alligatorgar, snakehead, indonesiantiger) ----
       // Occasionally locks onto a small prey fish and charges toward it.
-      // Purely cosmetic — predator never actually eats the prey fish.
+      // Purely cosmetic - predator never actually eats the prey fish.
       if (PREDATOR_SPECIES.has(f.species) && !f.target) {
         if (f.chaseCooldown === undefined) f.chaseCooldown = 10 + Math.random() * 15;
         f.chaseCooldown -= dt;
@@ -697,7 +697,7 @@
             f.chaseCooldown = 8 + Math.random() * 8; // no prey in tank, retry soon
           }
         }
-        // Steer toward prey — alternates cruise (1.5×) and sprint bursts (2.8×).
+        // Steer toward prey - alternates cruise (1.5×) and sprint bursts (2.8×).
         // Burst fires every 2-3.5s and lasts 0.4-0.6s, giving the chase a natural rhythm.
         // When chase ends, desiredVx/Vy reverts to wander; existing velocity lerp decelerates predator.
         if (f.chaseTarget) {
@@ -705,7 +705,7 @@
           const dx = f.chaseTarget.x - f.x, dy = f.chaseTarget.y - f.y;
           const d  = Math.hypot(dx, dy) || 1;
           if (d > CHASE_RADIUS * 1.4) {
-            // Prey escaped — give up; clear burst so next chase starts clean
+            // Prey escaped - give up; clear burst so next chase starts clean
             f.chaseTarget = null; f.chaseBursting = false; f.chaseCooldown = 15 + Math.random() * 15;
           } else {
             if (f.chaseBurstTimer === undefined) f.chaseBurstTimer = 1.0 + Math.random() * 1.0;
@@ -730,7 +730,7 @@
       // ---- Prey flee (cherrybarb, electricblueram) ----
       // Per-frame: each fish independently finds its nearest predator and bolts away.
       // Schools naturally scatter since each member reacts to the same predator differently.
-      // Flee uses alternating bursts (like the predator) — base 2.2× with sprint spikes at 3.2-4.6×.
+      // Flee uses alternating bursts (like the predator) - base 2.2× with sprint spikes at 3.2-4.6×.
       // When predator exits FLEE_RADIUS the block stops overriding desiredVx/Vy;
       // existing velocity lerp naturally decelerates the prey back to normal swim speed.
       if (PREY_SPECIES.has(f.species) && !f.target) {
@@ -792,7 +792,7 @@
       if (f.y < yMin) { f.y = yMin; f.vy = 0; f.targetY = yMin + (yMax - yMin) * (0.2 + Math.random() * 0.5); }
       if (f.y > yMax) { f.y = yMax; f.vy = 0; f.targetY = yMin + (yMax - yMin) * (0.2 + Math.random() * 0.5); }
 
-      // Smoothly lerp renderDir toward actual swim direction — produces a natural squish-turn
+      // Smoothly lerp renderDir toward actual swim direction - produces a natural squish-turn
       const wantDir = f.vx > 0 ? 1 : f.vx < 0 ? -1 : (f.renderDir >= 0 ? 1 : -1);
       f.renderDir += (wantDir - f.renderDir) * Math.min(1, dt * 10);
     }
@@ -830,7 +830,7 @@
     if (!bgCanvas) prebakeBackground();
     ctx.drawImage(bgCanvas, 0, 0);
 
-    // Animated light shimmer — cheap, no GC, drawn on top of baked base
+    // Animated light shimmer - cheap, no GC, drawn on top of baked base
     ctx.save();
     ctx.globalAlpha = 0.09;
     ctx.fillStyle = '#ffffff';
@@ -1002,7 +1002,7 @@
 
       } else if (type === 'superworm') {
         ctx.rotate(p.angle + Math.sin(w) * 0.3);
-        // Segmented body — 6 overlapping ovals
+        // Segmented body - 6 overlapping ovals
         const segs = 6, segL = 4, segH = 3.2;
         for (let s = 0; s < segs; s++) {
           const bx = (s - segs / 2 + 0.5) * (segL * 0.75);
@@ -1104,7 +1104,7 @@
   function drawArowanaCanvas(f) {
     const phase = f.tailPhase;
     const dir = f.renderDir || 1;
-    const L = 145, Hh = 17;       // very elongated — 8:1 ratio
+    const L = 145, Hh = 17;       // very elongated - 8:1 ratio
     const wag = Math.sin(phase) * 0.3;
 
     ctx.save();
@@ -1145,10 +1145,10 @@
     ctx.closePath();
     ctx.fill(); ctx.stroke();
 
-    // --- Main body — flat-topped torpedo ---
+    // --- Main body - flat-topped torpedo ---
     const bodyPath = () => {
       ctx.beginPath();
-      ctx.moveTo(L / 2, 2);                                                 // snout (slightly below center — upturned mouth)
+      ctx.moveTo(L / 2, 2);                                                 // snout (slightly below center - upturned mouth)
       ctx.bezierCurveTo(L / 2 - 8,  -Hh * 0.18, L / 3,  -Hh * 0.72, 0,   -Hh / 2);   // flat dorsal line
       ctx.bezierCurveTo(-L / 4, -Hh * 0.48, -L / 2 + 10, -Hh * 0.28, -L / 2, 0);
       ctx.bezierCurveTo(-L / 2 + 10, Hh * 0.42, -L / 4,   Hh * 0.62, 0,    Hh / 2);   // curved belly
@@ -1291,7 +1291,7 @@
     ctx.quadraticCurveTo(-L / 2 - 10,  Bh / 3 - wag * 22, -L / 2, 0);
     ctx.fill(); ctx.stroke();
 
-    // --- Body base (deep oval, head slightly wider — teardrop) ---
+    // --- Body base (deep oval, head slightly wider - teardrop) ---
     const bodyGrad = ctx.createRadialGradient(L / 12, -Bh / 6, 3, 0, 0, L / 1.3);
     bodyGrad.addColorStop(0,   '#4e2e14');
     bodyGrad.addColorStop(0.5, '#281408');
@@ -1397,7 +1397,7 @@
     ctx.closePath();
     ctx.fill(); ctx.stroke();
 
-    // --- Eye — very large with thick orange iris ring ---
+    // --- Eye - very large with thick orange iris ring ---
     const ex = L / 2 - 16, ey = -Bh / 5;
     ctx.fillStyle = '#e87820';          // orange ring
     ctx.beginPath();
@@ -1490,7 +1490,7 @@
   // ===================== GENERIC SPRITE FISH =====================
   // 3-section rendering: rigid head/body → mid-body wave → tail wag.
   // GPU scales from full-res source (or full-res pre-baked variant canvas) to
-  // targetW×targetH at draw time — sharp at any VS Code zoom level.
+  // targetW×targetH at draw time - sharp at any VS Code zoom level.
   // ctx.filter is never set on the main context; color variants come from
   // pre-baked full-res offscreen canvases (the main GPU win vs original).
   function drawSpriteSheetFish(f) {
@@ -1612,7 +1612,7 @@
     else drawGeneric(f);
   }
 
-  // Soft elliptical shadow under each fish — all fish drawn in one save/restore block
+  // Soft elliptical shadow under each fish - all fish drawn in one save/restore block
   function drawAllShadows() {
     if (fish.length === 0) return;
     const floorY = H - 28;
@@ -1656,7 +1656,7 @@
     drawTooltip();
   }
 
-  // 30fps cap + pause when hidden — cuts rAF callbacks by ~50% vs uncapped
+  // 30fps cap + pause when hidden - cuts rAF callbacks by ~50% vs uncapped
   // and eliminates all CPU/GPU work when the panel is not visible.
   const FRAME_MS = 1000 / 30;
   let lastRender = 0;
