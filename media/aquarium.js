@@ -676,7 +676,7 @@
         f.chaseCooldown -= dt;
         // Validate existing chase target (clear if prey died, removed, or duration expired)
         if (f.chaseTarget && (f.chaseTarget.dead || !fish.includes(f.chaseTarget) || f.chaseDuration <= 0)) {
-          f.chaseTarget = null;
+          f.chaseTarget = null; f.chaseBursting = false;
           f.chaseCooldown = 18 + Math.random() * 20;
         }
         // Acquire a new prey target when cooldown expires
@@ -688,23 +688,39 @@
             if (d2 < nearestD2) { nearestD2 = d2; nearest = o; }
           }
           if (nearest) {
-            f.chaseTarget   = nearest;
-            f.chaseDuration = 3.5 + Math.random() * 2;
-            f.chaseCooldown = 22 + Math.random() * 20;
+            f.chaseTarget     = nearest;
+            f.chaseDuration   = 3.5 + Math.random() * 2;
+            f.chaseCooldown   = 22 + Math.random() * 20;
+            f.chaseBurstTimer = 0.8 + Math.random() * 1.0; // delay before first sprint
+            f.chaseBursting   = false;
           } else {
             f.chaseCooldown = 8 + Math.random() * 8; // no prey in tank, retry soon
           }
         }
-        // Steer toward prey at 1.8× normal speed
+        // Steer toward prey — alternates cruise (1.5×) and sprint bursts (2.8×).
+        // Burst fires every 2-3.5s and lasts 0.4-0.6s, giving the chase a natural rhythm.
+        // When chase ends, desiredVx/Vy reverts to wander; existing velocity lerp decelerates predator.
         if (f.chaseTarget) {
           f.chaseDuration -= dt;
           const dx = f.chaseTarget.x - f.x, dy = f.chaseTarget.y - f.y;
           const d  = Math.hypot(dx, dy) || 1;
           if (d > CHASE_RADIUS * 1.4) {
-            // Prey escaped — give up
-            f.chaseTarget = null; f.chaseCooldown = 15 + Math.random() * 15;
+            // Prey escaped — give up; clear burst so next chase starts clean
+            f.chaseTarget = null; f.chaseBursting = false; f.chaseCooldown = 15 + Math.random() * 15;
           } else {
-            const spd = (SPECIES_SPEED[f.species] || 40) * 1.8;
+            if (f.chaseBurstTimer === undefined) f.chaseBurstTimer = 1.0 + Math.random() * 1.0;
+            f.chaseBurstTimer -= dt;
+            if (f.chaseBurstTimer <= 0) {
+              f.chaseBursting    = true;
+              f.chaseBurstRemain = 0.4 + Math.random() * 0.2;
+              f.chaseBurstTimer  = 2.0 + Math.random() * 1.5;
+            }
+            if (f.chaseBursting) {
+              f.chaseBurstRemain -= dt;
+              if (f.chaseBurstRemain <= 0) f.chaseBursting = false;
+            }
+            const chaseMult = f.chaseBursting ? 2.8 : 1.5;
+            const spd = (SPECIES_SPEED[f.species] || 40) * chaseMult;
             desiredVx = (dx / d) * spd;
             desiredVy = (dy / d) * spd;
           }
@@ -713,8 +729,10 @@
 
       // ---- Prey flee (cherrybarb, electricblueram) ----
       // Per-frame: each fish independently finds its nearest predator and bolts away.
-      // No persistent state — immune to stale references.
       // Schools naturally scatter since each member reacts to the same predator differently.
+      // Flee uses alternating bursts (like the predator) — base 2.2× with sprint spikes at 3.2-4.6×.
+      // When predator exits FLEE_RADIUS the block stops overriding desiredVx/Vy;
+      // existing velocity lerp naturally decelerates the prey back to normal swim speed.
       if (PREY_SPECIES.has(f.species) && !f.target) {
         let pdx = 0, pdy = 0, minPredD = Infinity;
         for (const o of fish) {
@@ -724,12 +742,25 @@
           if (d < minPredD) { minPredD = d; pdx = dx; pdy = dy; }
         }
         if (minPredD < FLEE_RADIUS) {
-          const panicMult = minPredD < 80 ? 3.8 : 2.4; // burst when predator very close
+          // Burst timer only decrements while actually fleeing so each chase gets fresh cycle.
+          if (f.fleeBurstTimer === undefined) f.fleeBurstTimer = 0.5 + Math.random() * 0.8;
+          f.fleeBurstTimer -= dt;
+          if (f.fleeBurstTimer <= 0) {
+            f.fleeBursting    = true;
+            f.fleeBurstRemain = 0.3 + Math.random() * 0.15;
+            f.fleeBurstTimer  = 0.8 + Math.random() * 0.8;
+          }
+          if (f.fleeBursting) {
+            f.fleeBurstRemain -= dt;
+            if (f.fleeBurstRemain <= 0) f.fleeBursting = false;
+          }
+          const baseMultiplier = minPredD < 80 ? 3.2 : 2.2;
+          const panicMult      = f.fleeBursting ? baseMultiplier * 1.45 : baseMultiplier;
           const spd = (SPECIES_SPEED[f.species] || 38) * panicMult;
           const fd  = Math.hypot(pdx, pdy) || 1;
           desiredVx = (pdx / fd) * spd;
           desiredVy = (pdy / fd) * spd;
-          f.tailPhase += dt * 4; // faster tail beat conveys panic
+          f.tailPhase += dt * (f.fleeBursting ? 6 : 4); // tail beats faster in sprint
         }
       }
 
