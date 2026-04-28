@@ -304,6 +304,11 @@
     diamondstingray: 0.008, cherrybarb: 0.015, angelfish: 0.010,
   };
 
+  // True schooling fish — Boids (separation + alignment + cohesion) during wander.
+  const SCHOOLING_SPECIES = new Set(['cherrybarb', 'silverdollar']);
+  // Territorial cichlids — slowly patrol a home zone rather than wandering freely.
+  const TERRITORIAL_SPECIES = new Set(['oscar', 'flowerhorn', 'peacockbass', 'electricblueram']);
+
   const FOOD_PREFERENCE = {
     arowana:      ['cricket', 'shrimp'],
     oscar:        ['cricket', 'superworm'],
@@ -585,8 +590,75 @@
         desiredVy = (f.targetY - f.y) * 0.3 + weave;
       }
 
-      f.vx += (desiredVx - f.vx) * Math.min(1, dt * 2);
-      f.vy += (desiredVy - f.vy) * Math.min(1, dt * 1.5);
+      // ---- Schooling: cherrybarb, silverdollar (Boids) ----
+      // Only during wander (not chasing food). O(n) per fish, n ≤ 10, safe at 30fps.
+      if (SCHOOLING_SPECIES.has(f.species) && !f.target) {
+        let sepX = 0, sepY = 0, sepN = 0;
+        let sumVx = 0, sumVy = 0, sumX = 0, sumY = 0, nbN = 0;
+        const SEP_R = 55, PERC_R = 160;
+        for (const o of fish) {
+          if (o === f || o.species !== f.species || o.dead) continue;
+          const dx = f.x - o.x, dy = f.y - o.y;
+          const d  = Math.hypot(dx, dy) || 1;
+          if (d < SEP_R) { sepX += (dx / d) * (1 - d / SEP_R); sepY += (dy / d) * (1 - d / SEP_R); sepN++; }
+          if (d < PERC_R) { sumVx += o.vx; sumVy += o.vy; sumX += o.x; sumY += o.y; nbN++; }
+        }
+        if (nbN > 0) {
+          const spd  = SPECIES_SPEED[f.species] || 30;
+          const zone = SPECIES_ZONE[f.species] || { yMin: 0.12, yMax: 0.68 };
+          // Cohesion: toward school center, Y clamped to zone so school can't fight boundary
+          const cx = sumX / nbN - f.x;
+          const cy = Math.max(H * zone.yMin, Math.min(H * zone.yMax, sumY / nbN)) - f.y;
+          const cd = Math.hypot(cx, cy) || 1;
+          // Alignment: match average school heading
+          const avgVxN = sumVx / nbN, avgVyN = sumVy / nbN;
+          const av = Math.hypot(avgVxN, avgVyN) || 1;
+          let bvx = (cx / cd) * spd * 0.5 + (avgVxN / av) * spd * 0.8;
+          let bvy = (cy / cd) * spd * 0.5 + (avgVyN / av) * spd * 0.8;
+          // Separation: push away from fish that are too close
+          if (sepN > 0) { bvx += sepX * spd * 2.2; bvy += sepY * spd * 2.2; }
+          desiredVx = desiredVx * 0.4 + bvx * 0.6;
+          desiredVy = desiredVy * 0.4 + bvy * 0.6;
+        }
+      }
+
+      // ---- Territorial patrol: oscar, flowerhorn, peacockbass, electricblueram ----
+      // Establishes a home territory at first spawn; gently pulls fish back if too far.
+      if (TERRITORIAL_SPECIES.has(f.species) && !f.target) {
+        if (!f.territory) f.territory = { x: f.x, y: f.y };
+        const tdx = f.territory.x - f.x;
+        if (Math.abs(tdx) > 90) desiredVx += Math.sign(tdx) * 7;
+        // Slow sinusoidal orbit around territory Y — gives cichlid the feel of patrolling
+        const orbY = f.territory.y + Math.sin(perfNow / 4500 + f.tailPhase) * 38;
+        f.targetY = f.targetY * 0.97 + orbY * 0.03;
+      }
+
+      // ---- Arowana surface breach ----
+      // Rare (~every 60-80s): surges toward surface then settles back. Mimics hunting.
+      if (f.species === 'arowana' && !f.target) {
+        if (!f.breaching && Math.random() < dt * 0.013) {
+          f.breaching = true; f.breachTimer = 2.2;
+        }
+        if (f.breaching) {
+          f.breachTimer -= dt;
+          desiredVy = f.breachTimer > 1.1 ? -85 : 22;
+          if (f.breachTimer <= 0) f.breaching = false;
+        }
+      }
+
+      // ---- Pleco substrate parking ----
+      // Occasionally parks motionless on the bottom (simulates sucker-mouth resting).
+      if (f.species === 'pleco' && !f.target) {
+        if (f.parkTimer === undefined) f.parkTimer = 0;
+        f.parkTimer -= dt;
+        if (f.parkTimer <= 0) {
+          f.parked    = Math.random() < 0.3;
+          f.parkTimer = f.parked ? 3 + Math.random() * 5 : 2 + Math.random() * 4;
+        }
+        if (f.parked) { desiredVx = 0; desiredVy = 0; }
+      }
+
+      f.vx += (desiredVx - f.vx) * Math.min(1, dt * 2);      f.vy += (desiredVy - f.vy) * Math.min(1, dt * 1.5);
       if (f.species === 'arowana')  f.vy *= 0.72;  // glide horizontally at surface
       if (f.species === 'pleco')    f.vy *= 0.30;  // hugs the bottom
       if (f.species === 'rtcatfish') f.vy *= 0.45; // mostly bottom, occasional vertical drift
