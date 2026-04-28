@@ -247,52 +247,52 @@ function getHtml(context: vscode.ExtensionContext, webview: vscode.Webview): str
     vscode.Uri.file(path.join(context.extensionPath, 'media', 'aquarium.css'))
   );
   const arowanaUri = webview.asWebviewUri(
-    vscode.Uri.file(path.join(context.extensionPath, 'media', 'arowana2.jpg'))
+    vscode.Uri.file(path.join(context.extensionPath, 'media', 'fish', 'arowana2.jpg'))
   );
   const oscarUri = webview.asWebviewUri(
-    vscode.Uri.file(path.join(context.extensionPath, 'media', 'oscar.jpg'))
+    vscode.Uri.file(path.join(context.extensionPath, 'media', 'fish', 'oscar.jpg'))
   );
   const snakeheadUri = webview.asWebviewUri(
-    vscode.Uri.file(path.join(context.extensionPath, 'media', 'snakehead.jpg'))
+    vscode.Uri.file(path.join(context.extensionPath, 'media', 'fish', 'snakehead.jpg'))
   );
   const rtcUri = webview.asWebviewUri(
-    vscode.Uri.file(path.join(context.extensionPath, 'media', 'rtc.jpg'))
+    vscode.Uri.file(path.join(context.extensionPath, 'media', 'fish', 'rtc.jpg'))
   );
   const flowerHornUri = webview.asWebviewUri(
-    vscode.Uri.file(path.join(context.extensionPath, 'media', 'flower-horn.jpg'))
+    vscode.Uri.file(path.join(context.extensionPath, 'media', 'fish', 'flower-horn.jpg'))
   );
   const agUri = webview.asWebviewUri(
-    vscode.Uri.file(path.join(context.extensionPath, 'media', 'ag.jpg'))
+    vscode.Uri.file(path.join(context.extensionPath, 'media', 'fish', 'ag.jpg'))
   );
   const plecoUri = webview.asWebviewUri(
-    vscode.Uri.file(path.join(context.extensionPath, 'media', 'pleco.jpg'))
+    vscode.Uri.file(path.join(context.extensionPath, 'media', 'fish', 'pleco.jpg'))
   );
   const peacockbassUri = webview.asWebviewUri(
-    vscode.Uri.file(path.join(context.extensionPath, 'media', 'peacockbass.jpg'))
+    vscode.Uri.file(path.join(context.extensionPath, 'media', 'fish', 'peacockbass.jpg'))
   );
   const knifefishUri = webview.asWebviewUri(
-    vscode.Uri.file(path.join(context.extensionPath, 'media', 'knifefish.jpg'))
+    vscode.Uri.file(path.join(context.extensionPath, 'media', 'fish', 'knifefish.jpg'))
   );
   const silverdollarUri = webview.asWebviewUri(
-    vscode.Uri.file(path.join(context.extensionPath, 'media', 'silverdollar.jpg'))
+    vscode.Uri.file(path.join(context.extensionPath, 'media', 'fish', 'silverdollar.jpg'))
   );
   const tilapiaUri = webview.asWebviewUri(
-    vscode.Uri.file(path.join(context.extensionPath, 'media', 'tilapia.jpg'))
+    vscode.Uri.file(path.join(context.extensionPath, 'media', 'fish', 'tilapia.jpg'))
   );
   const indonesiantigerUri = webview.asWebviewUri(
-    vscode.Uri.file(path.join(context.extensionPath, 'media', 'indonesian-tiger.jpg'))
+    vscode.Uri.file(path.join(context.extensionPath, 'media', 'fish', 'indonesian-tiger.jpg'))
   );
   const electricblueramUri = webview.asWebviewUri(
-    vscode.Uri.file(path.join(context.extensionPath, 'media', 'electric-blue-ram.jpg'))
+    vscode.Uri.file(path.join(context.extensionPath, 'media', 'fish', 'electric-blue-ram.jpg'))
   );
   const diamondstingrayUri = webview.asWebviewUri(
-    vscode.Uri.file(path.join(context.extensionPath, 'media', 'diamond-stingray.jpg'))
+    vscode.Uri.file(path.join(context.extensionPath, 'media', 'fish', 'diamond-stingray.jpg'))
   );
   const cherrybarbUri = webview.asWebviewUri(
-    vscode.Uri.file(path.join(context.extensionPath, 'media', 'cherrybarb.jpg'))
+    vscode.Uri.file(path.join(context.extensionPath, 'media', 'fish', 'cherrybarb.jpg'))
   );
   const angelfishUri = webview.asWebviewUri(
-    vscode.Uri.file(path.join(context.extensionPath, 'media', 'angelfish.jpg'))
+    vscode.Uri.file(path.join(context.extensionPath, 'media', 'fish', 'angelfish.jpg'))
   );
   const fontawesomeUri = webview.asWebviewUri(
     vscode.Uri.file(path.join(context.extensionPath, 'media', 'fontawesome.min.css'))
