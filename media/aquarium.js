@@ -170,7 +170,13 @@
     flowerhorn:   { sheet: 'flowerhorn',   fx: 0, fy: 0, fw: 1, fh: 1, targetH: 88,  facesLeft: true,  tailRatio: 0.22 },
     peacockbass:  { sheet: 'peacockbass',  fx: 0, fy: 0, fw: 1, fh: 1, targetH: 82,  facesLeft: true,  tailRatio: 0.22 },
     knifefish:    { sheet: 'knifefish',    fx: 0, fy: 0, fw: 1, fh: 1, targetH: 84,  facesLeft: false, tailRatio: 0.28 },
-    silverdollar: { sheet: 'silverdollar', fx: 0, fy: 0, fw: 1, fh: 1, targetH: 72,  facesLeft: false, tailRatio: 0.20 },
+    silverdollar:    { sheet: 'silverdollar',    fx: 0, fy: 0, fw: 1, fh: 1, targetH: 72,  facesLeft: false, tailRatio: 0.20 },
+    tilapia:         { sheet: 'tilapia',         fx: 0, fy: 0, fw: 1, fh: 1, targetH: 72,  facesLeft: false, tailRatio: 0.22 },
+    indonesiantiger: { sheet: 'indonesiantiger', fx: 0, fy: 0, fw: 1, fh: 1, targetH: 84,  facesLeft: false, tailRatio: 0.24 },
+    electricblueram: { sheet: 'electricblueram', fx: 0, fy: 0, fw: 1, fh: 1, targetH: 48,  facesLeft: false, tailRatio: 0.20 },
+    diamondstingray: { sheet: 'diamondstingray', fx: 0, fy: 0, fw: 1, fh: 1, targetH: 88,  facesLeft: false, tailRatio: 0.20 },
+    cherrybarb:      { sheet: 'cherrybarb',      fx: 0, fy: 0, fw: 1, fh: 1, targetH: 46,  facesLeft: false, tailRatio: 0.22 },
+    angelfish:       { sheet: 'angelfish',       fx: 0, fy: 0, fw: 1, fh: 1, targetH: 94,  facesLeft: false, tailRatio: 0.18 },
   };
 
   const SPECIES_COLOR_VARIANTS = {
@@ -205,6 +211,28 @@
     silverdollar: [{ id: 'silver',    filter: '' },
                    { id: 'spotted',   filter: 'contrast(1.3) brightness(0.92)' },
                    { id: 'red_hook',  filter: 'hue-rotate(-15deg) saturate(1.6) brightness(1.0)' }],
+    tilapia:      [{ id: 'natural',   filter: '' },
+                   { id: 'blue',      filter: 'hue-rotate(192deg) saturate(1.4) brightness(0.9)' },
+                   { id: 'red',       filter: 'hue-rotate(-10deg) saturate(1.9) brightness(1.06)' }],
+    indonesiantiger: [
+                   { id: 'natural',   filter: '' },
+                   { id: 'dark',      filter: 'brightness(0.72) contrast(1.35) saturate(0.88)' },
+                   { id: 'amber',     filter: 'sepia(0.35) saturate(1.6) hue-rotate(10deg) brightness(1.05)' }],
+    electricblueram: [
+                   { id: 'blue',      filter: '' },
+                   { id: 'german',    filter: 'hue-rotate(38deg) saturate(0.82) brightness(1.12)' },
+                   { id: 'gold',      filter: 'sepia(0.5) saturate(2.0) hue-rotate(18deg) brightness(1.1)' }],
+    diamondstingray: [
+                   { id: 'natural',   filter: '' },
+                   { id: 'dark',      filter: 'brightness(0.75) contrast(1.25) saturate(0.85)' },
+                   { id: 'albino',    filter: 'sepia(0.28) brightness(1.7) saturate(0.42)' }],
+    cherrybarb:   [{ id: 'red',       filter: '' },
+                   { id: 'female',    filter: 'sepia(0.6) hue-rotate(22deg) saturate(0.65) brightness(1.1)' },
+                   { id: 'albino',    filter: 'sepia(0.15) brightness(1.6) saturate(0.28)' }],
+    angelfish:    [{ id: 'silver',    filter: '' },
+                   { id: 'gold',      filter: 'sepia(0.6) saturate(2.2) hue-rotate(14deg) brightness(1.1)' },
+                   { id: 'black',     filter: 'brightness(0.25) contrast(2.4) saturate(0.18)' },
+                   { id: 'marble',    filter: 'contrast(1.5) hue-rotate(8deg) saturate(0.72)' }],
   };
 
   const SPECIES_ZONE = {
@@ -218,6 +246,12 @@
     peacockbass:  { yMin: 0.15, yMax: 0.65 },
     knifefish:    { yMin: 0.35, yMax: 0.82 },
     silverdollar: { yMin: 0.20, yMax: 0.70 },
+    tilapia:         { yMin: 0.15, yMax: 0.75 },
+    indonesiantiger: { yMin: 0.10, yMax: 0.65 },
+    electricblueram: { yMin: 0.45, yMax: 0.85 },
+    diamondstingray: { yMin: 0.84, yMax: 0.97 },
+    cherrybarb:      { yMin: 0.12, yMax: 0.68 },
+    angelfish:       { yMin: 0.18, yMax: 0.78 },
   };
 
   const SPECIES_SPEED = {
@@ -225,6 +259,8 @@
     alligatorgar: 28, oscar: 22, flowerhorn: 18,
     peacockbass: 35, knifefish: 28, silverdollar: 30,
     rtcatfish: 14, pleco: 6,
+    tilapia: 24, indonesiantiger: 32, electricblueram: 18,
+    diamondstingray: 10, cherrybarb: 38, angelfish: 16,
   };
 
   const SPECIES_MID_AMP = {
@@ -232,12 +268,16 @@
     alligatorgar: 0.04, oscar: 0.07, flowerhorn: 0.07,
     peacockbass: 0.08, knifefish: 0.12, silverdollar: 0.06,
     rtcatfish: 0.08, pleco: 0.03,
+    tilapia: 0.07, indonesiantiger: 0.09, electricblueram: 0.08,
+    diamondstingray: 0.02, cherrybarb: 0.10, angelfish: 0.05,
   };
 
   const HUNGER_DECAY = {
     arowana: 0.010, oscar: 0.013, snakehead: 0.011,
     alligatorgar: 0.008, rtcatfish: 0.010, pleco: 0.006, flowerhorn: 0.013,
     peacockbass: 0.012, knifefish: 0.009, silverdollar: 0.010,
+    tilapia: 0.012, indonesiantiger: 0.011, electricblueram: 0.014,
+    diamondstingray: 0.008, cherrybarb: 0.015, angelfish: 0.010,
   };
 
   const FOOD_PREFERENCE = {
@@ -251,6 +291,12 @@
     peacockbass:  ['shrimp', 'cricket'],
     knifefish:    ['shrimp', 'superworm'],
     silverdollar: ['pellet', 'cricket'],
+    tilapia:      ['pellet', 'cricket'],
+    indonesiantiger: ['shrimp', 'cricket'],
+    electricblueram: ['pellet', 'shrimp'],
+    diamondstingray: ['shrimp', 'superworm'],
+    cherrybarb:   ['pellet', 'cricket'],
+    angelfish:    ['shrimp', 'pellet'],
   };
 
   const SPECIES_LABEL = {
@@ -258,6 +304,9 @@
     alligatorgar: 'Alligator Gar',
     rtcatfish: 'Red-Tailed Catfish', pleco: 'Pleco', flowerhorn: 'Flowerhorn',
     peacockbass: 'Peacock Bass', knifefish: 'Knifefish', silverdollar: 'Silver Dollar',
+    tilapia: 'Tilapia', indonesiantiger: 'Indonesian Tiger Fish',
+    electricblueram: 'Electric Blue Ram', diamondstingray: 'Diamond Stingray',
+    cherrybarb: 'Cherry Barb', angelfish: 'Angelfish',
   };
 
   // ---------- Resize ----------

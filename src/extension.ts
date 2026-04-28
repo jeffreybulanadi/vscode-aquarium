@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
 
-const FRESHWATER_SPECIES = ['arowana', 'oscar', 'snakehead', 'alligatorgar', 'rtcatfish', 'pleco', 'flowerhorn', 'peacockbass', 'knifefish', 'silverdollar'];
+const FRESHWATER_SPECIES = ['arowana', 'oscar', 'snakehead', 'alligatorgar', 'rtcatfish', 'pleco', 'flowerhorn', 'peacockbass', 'knifefish', 'silverdollar', 'tilapia', 'indonesiantiger', 'electricblueram', 'diamondstingray', 'cherrybarb', 'angelfish'];
 const SALTWATER_SPECIES = ['clownfish', 'tang', 'lionfish', 'angel-marine', 'pufferfish'];
 
 const SPECIES_LABELS: Record<string, string> = {
@@ -10,20 +10,29 @@ const SPECIES_LABELS: Record<string, string> = {
   alligatorgar: 'Alligator Gar',
   rtcatfish: 'Red-Tailed Catfish', pleco: 'Pleco', flowerhorn: 'Flowerhorn Cichlid',
   peacockbass: 'Peacock Bass', knifefish: 'Knifefish', silverdollar: 'Silver Dollar',
+  tilapia: 'Tilapia', indonesiantiger: 'Indonesian Tiger Fish',
+  electricblueram: 'Electric Blue Ram', diamondstingray: 'Diamond Stingray',
+  cherrybarb: 'Cherry Barb', angelfish: 'Angelfish',
   clownfish: 'Clownfish', tang: 'Tang', lionfish: 'Lionfish', 'angel-marine': 'Marine Angel', pufferfish: 'Pufferfish'
 };
 
 const SPECIES_COLOR_VARIANTS_EXT: Record<string, string[]> = {
-  arowana:      ['silver', 'golden', 'red', 'green'],
-  oscar:        ['tiger', 'red', 'albino'],
-  snakehead:    ['olive', 'giant', 'rainbow'],
-  alligatorgar: ['olive', 'spotted', 'albino'],
-  rtcatfish:    ['natural', 'albino'],
-  pleco:        ['common', 'royal', 'goldnugget'],
-  flowerhorn:   ['red_dragon', 'golden', 'kamfa', 'blue'],
-  peacockbass:  ['natural', 'speckled', 'butterfly'],
-  knifefish:    ['natural', 'ghost', 'dark'],
-  silverdollar: ['silver', 'spotted', 'red_hook'],
+  arowana:         ['silver', 'golden', 'red', 'green'],
+  oscar:           ['tiger', 'red', 'albino'],
+  snakehead:       ['olive', 'giant', 'rainbow'],
+  alligatorgar:    ['olive', 'spotted', 'albino'],
+  rtcatfish:       ['natural', 'albino'],
+  pleco:           ['common', 'royal', 'goldnugget'],
+  flowerhorn:      ['red_dragon', 'golden', 'kamfa', 'blue'],
+  peacockbass:     ['natural', 'speckled', 'butterfly'],
+  knifefish:       ['natural', 'ghost', 'dark'],
+  silverdollar:    ['silver', 'spotted', 'red_hook'],
+  tilapia:         ['natural', 'blue', 'red'],
+  indonesiantiger: ['natural', 'dark', 'amber'],
+  electricblueram: ['blue', 'german', 'gold'],
+  diamondstingray: ['natural', 'dark', 'albino'],
+  cherrybarb:      ['red', 'female', 'albino'],
+  angelfish:       ['silver', 'gold', 'black', 'marble'],
 };
 
 let panel: vscode.WebviewPanel | undefined;
@@ -256,6 +265,24 @@ function getHtml(context: vscode.ExtensionContext, webview: vscode.Webview): str
   const silverdollarUri = webview.asWebviewUri(
     vscode.Uri.file(path.join(context.extensionPath, 'media', 'silverdollar.jpg'))
   );
+  const tilapiaUri = webview.asWebviewUri(
+    vscode.Uri.file(path.join(context.extensionPath, 'media', 'tilapia.jpg'))
+  );
+  const indonesiantigerUri = webview.asWebviewUri(
+    vscode.Uri.file(path.join(context.extensionPath, 'media', 'indonesian-tiger.jpg'))
+  );
+  const electricblueramUri = webview.asWebviewUri(
+    vscode.Uri.file(path.join(context.extensionPath, 'media', 'electric-blue-ram.jpg'))
+  );
+  const diamondstingrayUri = webview.asWebviewUri(
+    vscode.Uri.file(path.join(context.extensionPath, 'media', 'diamond-stingray.jpg'))
+  );
+  const cherrybarbUri = webview.asWebviewUri(
+    vscode.Uri.file(path.join(context.extensionPath, 'media', 'cherrybarb.jpg'))
+  );
+  const angelfishUri = webview.asWebviewUri(
+    vscode.Uri.file(path.join(context.extensionPath, 'media', 'angelfish.jpg'))
+  );
   const fontawesomeUri = webview.asWebviewUri(
     vscode.Uri.file(path.join(context.extensionPath, 'media', 'fontawesome.min.css'))
   );
@@ -280,7 +307,13 @@ function getHtml(context: vscode.ExtensionContext, webview: vscode.Webview): str
     .replace(/{{plecoUri}}/g, plecoUri.toString())
     .replace(/{{peacockbassUri}}/g, peacockbassUri.toString())
     .replace(/{{knifefishUri}}/g, knifefishUri.toString())
-    .replace(/{{silverdollarUri}}/g, silverdollarUri.toString());
+    .replace(/{{silverdollarUri}}/g, silverdollarUri.toString())
+    .replace(/{{tilapiaUri}}/g, tilapiaUri.toString())
+    .replace(/{{indonesiantigerUri}}/g, indonesiantigerUri.toString())
+    .replace(/{{electricblueramUri}}/g, electricblueramUri.toString())
+    .replace(/{{diamondstingrayUri}}/g, diamondstingrayUri.toString())
+    .replace(/{{cherrybarbUri}}/g, cherrybarbUri.toString())
+    .replace(/{{angelfishUri}}/g, angelfishUri.toString());
   return html;
 }
 
