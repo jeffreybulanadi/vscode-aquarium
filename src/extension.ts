@@ -2,37 +2,38 @@ import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
 
-const FRESHWATER_SPECIES = ['arowana', 'oscar', 'snakehead', 'alligatorgar', 'rtcatfish', 'pleco', 'flowerhorn', 'peacockbass', 'knifefish', 'silverdollar', 'tilapia', 'indonesiantiger', 'electricblueram', 'diamondstingray', 'cherrybarb', 'angelfish'];
+const FRESHWATER_SPECIES = ['arowana', 'oscar', 'snakehead', 'alligatorgar', 'rtcatfish', 'pleco', 'flowerhorn', 'peacockbass', 'knifefish', 'silverdollar', 'giantgourami', 'blackmoor', 'lionhead', 'shubunkin', 'calico', 'redcap'];
 const SALTWATER_SPECIES = ['clownfish', 'tang', 'lionfish', 'angel-marine', 'pufferfish'];
 
 const SPECIES_LABELS: Record<string, string> = {
   arowana: 'Arowana', oscar: 'Oscar Cichlid', snakehead: 'Snakehead',
   alligatorgar: 'Alligator Gar',
   rtcatfish: 'Red-Tailed Catfish', pleco: 'Pleco', flowerhorn: 'Flowerhorn Cichlid',
-  peacockbass: 'Peacock Bass', knifefish: 'Knifefish', silverdollar: 'Silver Dollar',
-  tilapia: 'Tilapia', indonesiantiger: 'Indonesian Tiger Fish',
-  electricblueram: 'Electric Blue Ram', diamondstingray: 'Diamond Stingray',
-  cherrybarb: 'Cherry Barb', angelfish: 'Angelfish',
+  peacockbass: 'Peacock Bass', knifefish: 'Knifefish',
+  silverdollar: 'Silver Dollar', giantgourami: 'Giant Gourami',
+  blackmoor: 'Black Moor', lionhead: 'Lionhead', shubunkin: 'Shubunkin',
+  calico: 'Calico Oranda', redcap: 'Red Cap Oranda',
+  goldfish: 'Goldfish', guppy: 'Guppy', angelfish: 'Angelfish', betta: 'Betta',
   clownfish: 'Clownfish', tang: 'Tang', lionfish: 'Lionfish', 'angel-marine': 'Marine Angel', pufferfish: 'Pufferfish'
 };
 
 const SPECIES_COLOR_VARIANTS_EXT: Record<string, string[]> = {
-  arowana:         ['silver', 'golden', 'red', 'green'],
-  oscar:           ['tiger', 'red', 'albino'],
-  snakehead:       ['olive', 'giant', 'rainbow'],
-  alligatorgar:    ['olive', 'spotted', 'albino'],
-  rtcatfish:       ['natural', 'albino'],
-  pleco:           ['common', 'royal', 'goldnugget'],
-  flowerhorn:      ['red_dragon', 'golden', 'kamfa', 'blue'],
-  peacockbass:     ['natural', 'speckled', 'butterfly'],
-  knifefish:       ['natural', 'ghost', 'dark'],
-  silverdollar:    ['silver', 'spotted', 'red_hook'],
-  tilapia:         ['natural', 'blue', 'red'],
-  indonesiantiger: ['natural', 'dark', 'amber'],
-  electricblueram: ['blue', 'german', 'gold'],
-  diamondstingray: ['natural', 'dark', 'albino'],
-  cherrybarb:      ['red', 'female', 'albino'],
-  angelfish:       ['silver', 'gold', 'black', 'marble'],
+  arowana:      ['silver', 'golden', 'red', 'green'],
+  oscar:        ['tiger', 'red', 'albino'],
+  snakehead:    ['olive', 'giant', 'rainbow'],
+  alligatorgar: ['olive', 'spotted', 'albino'],
+  rtcatfish:    ['natural', 'albino'],
+  pleco:        ['common', 'royal', 'goldnugget'],
+  flowerhorn:   ['red_dragon', 'golden', 'kamfa', 'blue'],
+  peacockbass:  ['natural', 'speckled', 'butterfly'],
+  knifefish:    ['natural', 'ghost', 'dark'],
+  silverdollar: ['silver', 'spotted', 'red_hook'],
+  giantgourami: ['natural', 'gold', 'albino'],
+  blackmoor:    ['natural', 'telescope', 'velvet'],
+  lionhead:     ['red_white', 'orange', 'calico'],
+  shubunkin:    ['natural', 'blue', 'orange'],
+  calico:       ['natural', 'orange_black', 'red_white'],
+  redcap:       ['natural', 'orange_cap', 'black_cap'],
 };
 
 let panel: vscode.WebviewPanel | undefined;
@@ -84,12 +85,7 @@ export function activate(context: vscode.ExtensionContext) {
       panel?.webview.postMessage({ type: 'feed' });
     }),
     vscode.commands.registerCommand('aquarium.switchType', () => switchType(context)),
-    vscode.commands.registerCommand('aquarium.toggleAutoOpen', () => toggleAutoOpen()),
-    vscode.workspace.onDidChangeConfiguration(e => {
-      if (e.affectsConfiguration('aquarium') && panel) {
-        pushState(context);
-      }
-    })
+    vscode.commands.registerCommand('aquarium.toggleAutoOpen', () => toggleAutoOpen())
   );
 }
 
@@ -156,20 +152,11 @@ function pushState(context: vscode.ExtensionContext) {
     return;
   }
   const cfg = getConfig();
-  const type = cfg.get<string>('type', 'freshwater');
-  const validSpecies = new Set(type === 'freshwater' ? FRESHWATER_SPECIES : SALTWATER_SPECIES);
-  const rawFish = cfg.get<any[]>('fish', []);
-  const filteredFish = rawFish.filter(f => f && validSpecies.has(f.species));
-  const fish = filteredFish.length > 0 ? filteredFish : [
-    { species: 'arowana', colorVariant: 'silver' },
-    { species: 'oscar',   colorVariant: 'tiger'  },
-    { species: 'oscar',   colorVariant: 'albino' },
-  ];
   const coins = context.globalState.get<number>('aquarium.coins', 0);
   panel.webview.postMessage({
     type: 'state',
-    aquariumType: type,
-    fish,
+    aquariumType: cfg.get<string>('type', 'freshwater'),
+    fish: cfg.get<any[]>('fish', []),
     coins,
   });
 }
@@ -265,23 +252,23 @@ function getHtml(context: vscode.ExtensionContext, webview: vscode.Webview): str
   const silverdollarUri = webview.asWebviewUri(
     vscode.Uri.file(path.join(context.extensionPath, 'media', 'silverdollar.jpg'))
   );
-  const tilapiaUri = webview.asWebviewUri(
-    vscode.Uri.file(path.join(context.extensionPath, 'media', 'tilapia.jpg'))
+  const giantgouramiUri = webview.asWebviewUri(
+    vscode.Uri.file(path.join(context.extensionPath, 'media', 'giantgourami.jpg'))
   );
-  const indonesiantigerUri = webview.asWebviewUri(
-    vscode.Uri.file(path.join(context.extensionPath, 'media', 'indonesian-tiger.jpg'))
+  const blackmoorUri = webview.asWebviewUri(
+    vscode.Uri.file(path.join(context.extensionPath, 'media', 'blackmoor.jpg'))
   );
-  const electricblueramUri = webview.asWebviewUri(
-    vscode.Uri.file(path.join(context.extensionPath, 'media', 'electric-blue-ram.jpg'))
+  const lionheadUri = webview.asWebviewUri(
+    vscode.Uri.file(path.join(context.extensionPath, 'media', 'lionhead.jpg'))
   );
-  const diamondstingrayUri = webview.asWebviewUri(
-    vscode.Uri.file(path.join(context.extensionPath, 'media', 'diamond-stingray.jpg'))
+  const shubunkinUri = webview.asWebviewUri(
+    vscode.Uri.file(path.join(context.extensionPath, 'media', 'shubukin.jpg'))
   );
-  const cherrybarbUri = webview.asWebviewUri(
-    vscode.Uri.file(path.join(context.extensionPath, 'media', 'cherrybarb.jpg'))
+  const calicoUri = webview.asWebviewUri(
+    vscode.Uri.file(path.join(context.extensionPath, 'media', 'calico.jpg'))
   );
-  const angelfishUri = webview.asWebviewUri(
-    vscode.Uri.file(path.join(context.extensionPath, 'media', 'angelfish.jpg'))
+  const redcapUri = webview.asWebviewUri(
+    vscode.Uri.file(path.join(context.extensionPath, 'media', 'redcap.jpg'))
   );
   const fontawesomeUri = webview.asWebviewUri(
     vscode.Uri.file(path.join(context.extensionPath, 'media', 'fontawesome.min.css'))
@@ -308,12 +295,12 @@ function getHtml(context: vscode.ExtensionContext, webview: vscode.Webview): str
     .replace(/{{peacockbassUri}}/g, peacockbassUri.toString())
     .replace(/{{knifefishUri}}/g, knifefishUri.toString())
     .replace(/{{silverdollarUri}}/g, silverdollarUri.toString())
-    .replace(/{{tilapiaUri}}/g, tilapiaUri.toString())
-    .replace(/{{indonesiantigerUri}}/g, indonesiantigerUri.toString())
-    .replace(/{{electricblueramUri}}/g, electricblueramUri.toString())
-    .replace(/{{diamondstingrayUri}}/g, diamondstingrayUri.toString())
-    .replace(/{{cherrybarbUri}}/g, cherrybarbUri.toString())
-    .replace(/{{angelfishUri}}/g, angelfishUri.toString());
+    .replace(/{{giantgouramiUri}}/g, giantgouramiUri.toString())
+    .replace(/{{blackmoorUri}}/g, blackmoorUri.toString())
+    .replace(/{{lionheadUri}}/g, lionheadUri.toString())
+    .replace(/{{shubunkinUri}}/g, shubunkinUri.toString())
+    .replace(/{{calicoUri}}/g, calicoUri.toString())
+    .replace(/{{redcapUri}}/g, redcapUri.toString());
   return html;
 }
 

@@ -37,14 +37,6 @@
   let cleanCooldown = 0;     // seconds until Clean button re-enables
   let tooltipData = null;    // { lines, x, y, expires (ms) }
   let lightMode = 'auto';    // 'auto' | 'day' | 'night'
-  // Sprite render scale — keep at 1.0 for best performance.
-  // Increase only for debugging; every 0.5 step = ~56% more GPU fill area.
-  const SPRITE_SCALE = 1.0;
-
-  const ZOOM_STEPS = [1.0, 1.5, 2.0];
-  let zoomIdx = 0;
-  let targetZoom = 1.0;
-  let currentZoom = 1.0;
   const bubbles = [];
   const plants = [];
   const pellets = [];
@@ -122,59 +114,13 @@
   // Chroma-key removal (dead code preserved for future use — not called in runtime)
   // function removeColorBackground(img, tolerance) { ... }
 
-  // Pre-bake every non-trivial color variant into its own offscreen canvas.
-  // Bakes directly at the target render size — no full-size intermediate needed.
-  // Eliminates ctx.filter on the main canvas context and per-frame GPU scaling.
-  function prebakeVariants() {
-    for (const [species, variants] of Object.entries(SPECIES_COLOR_VARIANTS)) {
-      const def = SPRITE_SPECIES[species];
-      if (!def) continue;
-      const baseSprite = SPRITES[def.sheet];
-      if (!baseSprite) continue;
-      const th = Math.round(def.targetH * SPRITE_SCALE);
-      const tw = Math.round(th * baseSprite.width / baseSprite.height);
-      for (const variant of variants) {
-        if (!variant.filter) continue;
-        const key = def.sheet + ':' + variant.id;
-        if (SPRITES[key]) continue;
-        // Bake filtered + pre-scaled in one pass — halves GPU canvas count vs two-step.
-        const ps = document.createElement('canvas');
-        ps.width = tw; ps.height = th;
-        const pctx = ps.getContext('2d');
-        pctx.filter = variant.filter;
-        pctx.drawImage(baseSprite, 0, 0, tw, th);
-        SPRITES[key] = ps;
-      }
-    }
-    // Free full-resolution base sprites — only pre-scaled ':ps' versions are needed at draw time.
-    for (const def of Object.values(SPRITE_SPECIES)) {
-      if (SPRITES[def.sheet] && SPRITES[def.sheet + ':ps']) {
-        SPRITES[def.sheet] = null;
-      }
-    }
-  }
-
   function loadSprites() {
     const assets = window.FISH_ASSETS || {};
     const keys = Object.keys(assets);
     if (keys.length === 0) { return Promise.resolve(); }
     return Promise.all(keys.map(key => new Promise(resolve => {
       const img = new Image();
-      img.onload = () => {
-        const raw = removeWhiteBackground(img);
-        SPRITES[key] = raw;
-        // Pre-scale to target render size so drawImage is a 1:1 pixel copy every frame.
-        const def = Object.values(SPRITE_SPECIES).find(d => d.sheet === key);
-        if (def) {
-          const th = Math.round(def.targetH * SPRITE_SCALE);
-          const tw = Math.round(th * raw.width / raw.height);
-          const ps = document.createElement('canvas');
-          ps.width = tw; ps.height = th;
-          ps.getContext('2d').drawImage(raw, 0, 0, tw, th);
-          SPRITES[key + ':ps'] = ps;
-        }
-        resolve();
-      };
+      img.onload = () => { SPRITES[key] = removeWhiteBackground(img); resolve(); };
       img.onerror = resolve;
       img.src = assets[key];
     })));
@@ -184,24 +130,25 @@
   // fx/fy/fw/fh are fractions of the source sprite canvas (0-1)
   // facesLeft: head is at LEFT of image (need scale(-dir,1)); else head at RIGHT
   const SPRITE_SPECIES = {
-    arowana:      { sheet: 'arowana',      fx: 0, fy: 0, fw: 1, fh: 1, targetH: 160, facesLeft: true,  tailRatio: 0.22 },
-    oscar:        { sheet: 'oscar',        fx: 0, fy: 0, fw: 1, fh: 1, targetH: 76,  facesLeft: false, tailRatio: 0.20 },
-    snakehead:    { sheet: 'snakehead',    fx: 0, fy: 0, fw: 1, fh: 1, targetH: 68,  facesLeft: false, tailRatio: 0.22 },
-    alligatorgar: { sheet: 'ag',           fx: 0, fy: 0, fw: 1, fh: 1, targetH: 160, facesLeft: false, tailRatio: 0.22 },
-    rtcatfish:    { sheet: 'rtc',          fx: 0, fy: 0, fw: 1, fh: 1, targetH: 124, facesLeft: false, tailRatio: 0.25 },
-    pleco:        { sheet: 'pleco',        fx: 0, fy: 0, fw: 1, fh: 1, targetH: 62,  facesLeft: false, tailRatio: 0.20 },
-    flowerhorn:   { sheet: 'flowerhorn',   fx: 0, fy: 0, fw: 1, fh: 1, targetH: 88,  facesLeft: true,  tailRatio: 0.22 },
-    peacockbass:  { sheet: 'peacockbass',  fx: 0, fy: 0, fw: 1, fh: 1, targetH: 82,  facesLeft: true,  tailRatio: 0.22 },
-    knifefish:    { sheet: 'knifefish',    fx: 0, fy: 0, fw: 1, fh: 1, targetH: 84,  facesLeft: false, tailRatio: 0.28 },
-    silverdollar:    { sheet: 'silverdollar',    fx: 0, fy: 0, fw: 1, fh: 1, targetH: 72,  facesLeft: false, tailRatio: 0.20 },
-    tilapia:         { sheet: 'tilapia',         fx: 0, fy: 0, fw: 1, fh: 1, targetH: 72,  facesLeft: false, tailRatio: 0.22 },
-    indonesiantiger: { sheet: 'indonesiantiger', fx: 0, fy: 0, fw: 1, fh: 1, targetH: 84,  facesLeft: true,  tailRatio: 0.24 },
-    electricblueram: { sheet: 'electricblueram', fx: 0, fy: 0, fw: 1, fh: 1, targetH: 48,  facesLeft: false, tailRatio: 0.20 },
-    diamondstingray: { sheet: 'diamondstingray', fx: 0, fy: 0, fw: 1, fh: 1, targetH: 88,  facesLeft: true,  tailRatio: 0.20 },
-    cherrybarb:      { sheet: 'cherrybarb',      fx: 0, fy: 0, fw: 1, fh: 1, targetH: 46,  facesLeft: false, tailRatio: 0.22 },
-    angelfish:       { sheet: 'angelfish',       fx: 0, fy: 0, fw: 1, fh: 1, targetH: 94,  facesLeft: false, tailRatio: 0.18 },
+    arowana:      { sheet: 'arowana',      fx: 0,    fy: 0, fw: 1,    fh: 1, targetH: 160, facesLeft: true,  tailRatio: 0.22 },
+    oscar:        { sheet: 'oscar',        fx: 0,    fy: 0, fw: 1,    fh: 1, targetH: 76,  facesLeft: false, tailRatio: 0.20 },
+    snakehead:    { sheet: 'snakehead',    fx: 0,    fy: 0, fw: 1,    fh: 1, targetH: 68,  facesLeft: false, tailRatio: 0.22 },
+    alligatorgar: { sheet: 'ag',           fx: 0,    fy: 0, fw: 1,    fh: 1, targetH: 160, facesLeft: false, tailRatio: 0.22 },
+    rtcatfish:    { sheet: 'rtc',          fx: 0,    fy: 0, fw: 1,    fh: 1, targetH: 124, facesLeft: false, tailRatio: 0.25 },
+    pleco:        { sheet: 'pleco',        fx: 0,    fy: 0, fw: 1,    fh: 1, targetH: 62,  facesLeft: false, tailRatio: 0.20 },
+    flowerhorn:   { sheet: 'flowerhorn',   fx: 0,    fy: 0, fw: 1,    fh: 1, targetH: 88,  facesLeft: true,  tailRatio: 0.22 },
+    peacockbass:  { sheet: 'peacockbass',  fx: 0,    fy: 0, fw: 1,    fh: 1, targetH: 82,  facesLeft: true,  tailRatio: 0.22 },
+    knifefish:    { sheet: 'knifefish',    fx: 0,    fy: 0, fw: 1,    fh: 1, targetH: 84,  facesLeft: false, tailRatio: 0.28 },
+    silverdollar: { sheet: 'silverdollar', fx: 0,    fy: 0, fw: 1,    fh: 1, targetH: 72,  facesLeft: false, tailRatio: 0.20 },
+    giantgourami: { sheet: 'giantgourami', fx: 0,    fy: 0, fw: 1,    fh: 1, targetH: 88,  facesLeft: false, tailRatio: 0.21 },
+    blackmoor:    { sheet: 'blackmoor',    fx: 0,    fy: 0, fw: 1,    fh: 1, targetH: 44,  facesLeft: true,  tailRatio: 0.25 },
+    lionhead:     { sheet: 'lionhead',     fx: 0,    fy: 0, fw: 1,    fh: 1, targetH: 46,  facesLeft: false, tailRatio: 0.28 },
+    shubunkin:    { sheet: 'shubukin',     fx: 0,    fy: 0, fw: 1,    fh: 1, targetH: 42,  facesLeft: false, tailRatio: 0.30 },
+    calico:       { sheet: 'calico',       fx: 0,    fy: 0, fw: 1,    fh: 1, targetH: 48,  facesLeft: true,  tailRatio: 0.22 },
+    redcap:       { sheet: 'redcap',       fx: 0,    fy: 0, fw: 1,    fh: 1, targetH: 44,  facesLeft: false, tailRatio: 0.26 },
   };
 
+  // Color variants per species — CSS filter strings
   const SPECIES_COLOR_VARIANTS = {
     arowana:      [{ id: 'silver',    filter: '' },
                    { id: 'golden',    filter: 'sepia(0.8) saturate(2.2) hue-rotate(18deg) brightness(1.1)' },
@@ -234,30 +181,27 @@
     silverdollar: [{ id: 'silver',    filter: '' },
                    { id: 'spotted',   filter: 'contrast(1.3) brightness(0.92)' },
                    { id: 'red_hook',  filter: 'hue-rotate(-15deg) saturate(1.6) brightness(1.0)' }],
-    tilapia:      [{ id: 'natural',   filter: '' },
-                   { id: 'blue',      filter: 'hue-rotate(192deg) saturate(1.4) brightness(0.9)' },
-                   { id: 'red',       filter: 'hue-rotate(-10deg) saturate(1.9) brightness(1.06)' }],
-    indonesiantiger: [
-                   { id: 'natural',   filter: '' },
-                   { id: 'dark',      filter: 'brightness(0.72) contrast(1.35) saturate(0.88)' },
-                   { id: 'amber',     filter: 'sepia(0.35) saturate(1.6) hue-rotate(10deg) brightness(1.05)' }],
-    electricblueram: [
-                   { id: 'blue',      filter: '' },
-                   { id: 'german',    filter: 'hue-rotate(38deg) saturate(0.82) brightness(1.12)' },
-                   { id: 'gold',      filter: 'sepia(0.5) saturate(2.0) hue-rotate(18deg) brightness(1.1)' }],
-    diamondstingray: [
-                   { id: 'natural',   filter: '' },
-                   { id: 'dark',      filter: 'brightness(0.75) contrast(1.25) saturate(0.85)' },
-                   { id: 'albino',    filter: 'sepia(0.28) brightness(1.7) saturate(0.42)' }],
-    cherrybarb:   [{ id: 'red',       filter: '' },
-                   { id: 'female',    filter: 'sepia(0.6) hue-rotate(22deg) saturate(0.65) brightness(1.1)' },
-                   { id: 'albino',    filter: 'sepia(0.15) brightness(1.6) saturate(0.28)' }],
-    angelfish:    [{ id: 'silver',    filter: '' },
-                   { id: 'gold',      filter: 'sepia(0.6) saturate(2.2) hue-rotate(14deg) brightness(1.1)' },
-                   { id: 'black',     filter: 'brightness(0.25) contrast(2.4) saturate(0.18)' },
-                   { id: 'marble',    filter: 'contrast(1.5) hue-rotate(8deg) saturate(0.72)' }],
+    giantgourami: [{ id: 'natural',   filter: '' },
+                   { id: 'gold',      filter: 'sepia(0.7) saturate(2.8) hue-rotate(18deg) brightness(1.1)' },
+                   { id: 'albino',    filter: 'sepia(0.15) brightness(1.65) saturate(0.35)' }],
+    blackmoor:    [{ id: 'natural',   filter: '' },
+                   { id: 'telescope', filter: 'brightness(0.80) contrast(1.2)' },
+                   { id: 'velvet',    filter: 'hue-rotate(200deg) saturate(1.3) brightness(0.70)' }],
+    lionhead:     [{ id: 'red_white', filter: '' },
+                   { id: 'orange',    filter: 'hue-rotate(10deg) saturate(1.5) brightness(1.05)' },
+                   { id: 'calico',    filter: 'hue-rotate(-15deg) saturate(1.8) contrast(1.1)' }],
+    shubunkin:    [{ id: 'natural',   filter: '' },
+                   { id: 'blue',      filter: 'hue-rotate(160deg) saturate(1.4) brightness(0.95)' },
+                   { id: 'orange',    filter: 'hue-rotate(20deg) saturate(2.0) brightness(1.05)' }],
+    calico:       [{ id: 'natural',   filter: '' },
+                   { id: 'orange_black', filter: 'hue-rotate(10deg) saturate(1.6) contrast(1.15)' },
+                   { id: 'red_white', filter: 'sepia(0.2) saturate(1.8) brightness(1.1)' }],
+    redcap:       [{ id: 'natural',   filter: '' },
+                   { id: 'orange_cap',filter: 'hue-rotate(12deg) saturate(1.6) brightness(1.05)' },
+                   { id: 'black_cap', filter: 'hue-rotate(180deg) saturate(0.5) brightness(0.80)' }],
   };
 
+  // Y zone fractions (fraction of canvas height) — controls vertical swim territory
   const SPECIES_ZONE = {
     alligatorgar: { yMin: 0.08, yMax: 0.55 },
     arowana:      { yMin: 0.22, yMax: 0.34 },
@@ -269,40 +213,42 @@
     peacockbass:  { yMin: 0.15, yMax: 0.65 },
     knifefish:    { yMin: 0.35, yMax: 0.82 },
     silverdollar: { yMin: 0.20, yMax: 0.70 },
-    tilapia:         { yMin: 0.15, yMax: 0.75 },
-    indonesiantiger: { yMin: 0.10, yMax: 0.65 },
-    electricblueram: { yMin: 0.45, yMax: 0.85 },
-    diamondstingray: { yMin: 0.84, yMax: 0.97 },
-    cherrybarb:      { yMin: 0.12, yMax: 0.68 },
-    angelfish:       { yMin: 0.18, yMax: 0.78 },
+    giantgourami: { yMin: 0.25, yMax: 0.75 },
+    blackmoor:    { yMin: 0.20, yMax: 0.78 },
+    lionhead:     { yMin: 0.20, yMax: 0.78 },
+    shubunkin:    { yMin: 0.15, yMax: 0.72 },
+    calico:       { yMin: 0.20, yMax: 0.78 },
+    redcap:       { yMin: 0.20, yMax: 0.78 },
   };
 
+  // Base swim speeds (px/s) — differentiated per species behavior
   const SPECIES_SPEED = {
     arowana: 65, snakehead: 42,
     alligatorgar: 28, oscar: 22, flowerhorn: 18,
-    peacockbass: 35, knifefish: 28, silverdollar: 30,
+    peacockbass: 35, knifefish: 28, silverdollar: 30, giantgourami: 12,
     rtcatfish: 14, pleco: 6,
-    tilapia: 24, indonesiantiger: 32, electricblueram: 18,
-    diamondstingray: 10, cherrybarb: 38, angelfish: 16,
+    blackmoor: 12, lionhead: 15, shubunkin: 22, calico: 14, redcap: 17,
   };
 
+  // Mid-body undulation amplitude (radians) — higher = more flexible body wave
   const SPECIES_MID_AMP = {
     arowana: 0.09, snakehead: 0.10,
     alligatorgar: 0.04, oscar: 0.07, flowerhorn: 0.07,
-    peacockbass: 0.08, knifefish: 0.12, silverdollar: 0.06,
+    peacockbass: 0.08, knifefish: 0.12, silverdollar: 0.06, giantgourami: 0.05,
     rtcatfish: 0.08, pleco: 0.03,
-    tilapia: 0.07, indonesiantiger: 0.09, electricblueram: 0.08,
-    diamondstingray: 0.02, cherrybarb: 0.10, angelfish: 0.05,
+    blackmoor: 0.04, lionhead: 0.04, shubunkin: 0.06, calico: 0.04, redcap: 0.05,
   };
 
+  // Hunger decay rate (units/sec). Fish hunger 0→100 over time;
+  // rates set so fish survive ~2-3 hrs without feeding before dying.
   const HUNGER_DECAY = {
     arowana: 0.010, oscar: 0.013, snakehead: 0.011,
     alligatorgar: 0.008, rtcatfish: 0.010, pleco: 0.006, flowerhorn: 0.013,
-    peacockbass: 0.012, knifefish: 0.009, silverdollar: 0.010,
-    tilapia: 0.012, indonesiantiger: 0.011, electricblueram: 0.014,
-    diamondstingray: 0.008, cherrybarb: 0.015, angelfish: 0.010,
+    peacockbass: 0.012, knifefish: 0.009, silverdollar: 0.010, giantgourami: 0.008,
+    blackmoor: 0.009, lionhead: 0.010, shubunkin: 0.010, calico: 0.009, redcap: 0.010,
   };
 
+  // Preferred food per species — correct food earns +15 coins & more satiety
   const FOOD_PREFERENCE = {
     arowana:      ['cricket', 'shrimp'],
     oscar:        ['cricket', 'superworm'],
@@ -314,22 +260,23 @@
     peacockbass:  ['shrimp', 'cricket'],
     knifefish:    ['shrimp', 'superworm'],
     silverdollar: ['pellet', 'cricket'],
-    tilapia:      ['pellet', 'cricket'],
-    indonesiantiger: ['shrimp', 'cricket'],
-    electricblueram: ['pellet', 'shrimp'],
-    diamondstingray: ['shrimp', 'superworm'],
-    cherrybarb:   ['pellet', 'cricket'],
-    angelfish:    ['shrimp', 'pellet'],
+    giantgourami: ['pellet', 'superworm'],
+    blackmoor:    ['pellet', 'shrimp'],
+    lionhead:     ['pellet', 'shrimp'],
+    shubunkin:    ['pellet', 'cricket'],
+    calico:       ['pellet', 'shrimp'],
+    redcap:       ['pellet', 'shrimp'],
   };
 
+  // Friendly species names (shown in tooltip)
   const SPECIES_LABEL = {
     arowana: 'Arowana', oscar: 'Oscar Cichlid', snakehead: 'Snakehead',
     alligatorgar: 'Alligator Gar',
     rtcatfish: 'Red-Tailed Catfish', pleco: 'Pleco', flowerhorn: 'Flowerhorn',
-    peacockbass: 'Peacock Bass', knifefish: 'Knifefish', silverdollar: 'Silver Dollar',
-    tilapia: 'Tilapia', indonesiantiger: 'Indonesian Tiger Fish',
-    electricblueram: 'Electric Blue Ram', diamondstingray: 'Diamond Stingray',
-    cherrybarb: 'Cherry Barb', angelfish: 'Angelfish',
+    peacockbass: 'Peacock Bass', knifefish: 'Knifefish',
+    silverdollar: 'Silver Dollar', giantgourami: 'Giant Gourami',
+    blackmoor: 'Black Moor', lionhead: 'Lionhead', shubunkin: 'Shubunkin',
+    calico: 'Calico Oranda', redcap: 'Red Cap Oranda',
   };
 
   // ---------- Resize ----------
@@ -340,7 +287,6 @@
     canvas.width = Math.floor(W * DPR);
     canvas.height = Math.floor(H * DPR);
     ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
-    ctx.imageSmoothingEnabled = true;
     bgCanvas = null;  // invalidate baked background on resize
     seedPlants();
     fish.forEach(clampFish);
@@ -393,11 +339,6 @@
       variant = variants[Math.floor(Math.random() * variants.length)];
     }
     const base = { colorVariant: variant ? variant.id : 'default', colorFilter: variant ? variant.filter : '' };
-    // Point to pre-baked filtered sprite (set by prebakeVariants); checked at draw time.
-    if (variant && variant.filter) {
-      const def = SPRITE_SPECIES[species];
-      if (def) base.prebakeKey = def.sheet + ':' + variant.id;
-    }
     if (species === 'oscar') {
       // Pre-compute orange patch positions once — avoid per-frame Math.random flicker
       const L = 65, Bh = 52;
@@ -448,14 +389,8 @@
   }
 
   function rebuildFish(list) {
-    // Filter out removed/unknown species so stale settings don't cause blank fish
-    const valid = list.filter(entry => !!SPRITE_SPECIES[entry.species]);
-    const defaults = [
-      { species: 'arowana', colorVariant: 'silver' },
-      { species: 'oscar',   colorVariant: 'tiger'  },
-      { species: 'oscar',   colorVariant: 'albino' },
-    ];
-    fish = (valid.length > 0 ? valid : defaults)
+    fish = list
+      .filter(entry => entry.species === 'arowana' || !!SPRITE_SPECIES[entry.species])
       .map(entry => makeFish(entry.species, entry.colorVariant));
     fish.forEach(clampFish);
     const typeText = aquariumType === 'saltwater' ? 'Saltwater' : 'Freshwater';
@@ -495,10 +430,6 @@
     }
 
     cleanCooldown = Math.max(0, cleanCooldown - dt);
-    currentZoom += (targetZoom - currentZoom) * Math.min(1, dt * 7);
-
-    // Hoist performance.now() — used for speed variation; calling per-fish per-frame is wasteful.
-    const perfNow = performance.now();
 
     // ---- Fish update (index loop so we can splice dead fish) ----
     for (let i = fish.length - 1; i >= 0; i--) {
@@ -582,7 +513,7 @@
           if (Math.random() < 0.25) f.vx = -f.vx;
         }
         const spd = SPECIES_SPEED[f.species] || 25;
-        const baseSpeed = spd + Math.sin(perfNow / 1500 + f.tailPhase) * spd * 0.3;
+        const baseSpeed = spd + Math.sin(performance.now() / 1500 + f.tailPhase) * spd * 0.3;
         desiredVx = Math.sign(f.vx || 1) * baseSpeed;
         // Organic vertical weave: gentle sine tied to tail phase
         const weave = Math.sin(f.tailPhase * 0.4) * baseSpeed * 0.06;
@@ -661,12 +592,6 @@
     for (const p of plants) {
       ctx.save();
       ctx.translate(p.x, H - 28);
-      // One gradient per plant (vertical, base → tip) reused across all blades.
-      // Previously one gradient per blade = ~70 GPU allocs/frame; now ~10.
-      const grad = ctx.createLinearGradient(0, 0, 0, -p.height);
-      grad.addColorStop(0,   p.stopColors[0]);
-      grad.addColorStop(0.5, p.stopColors[1]);
-      grad.addColorStop(1,   p.stopColors[2]);
       const master = Math.sin(t * 1.2 + p.sway);
       for (let b = 0; b < p.blades; b++) {
         const ox = p.bladeOffsets[b];
@@ -676,6 +601,12 @@
         const cx1 = ox + sw * h * 0.30, cy1 = -h * 0.38;
         const cx2 = tx - sw * h * 0.08, cy2 = -h * 0.72;
         const hw  = Math.max(1.5, 4.2 - Math.abs(ox) * 0.05);
+
+        // Re-use cached stop color strings — no template literals / GC per blade
+        const grad = ctx.createLinearGradient(ox, 0, tx, ty);
+        grad.addColorStop(0,   p.stopColors[0]);
+        grad.addColorStop(0.5, p.stopColors[1]);
+        grad.addColorStop(1,   p.stopColors[2]);
 
         ctx.beginPath();
         ctx.moveTo(ox - hw, -1);
@@ -744,9 +675,7 @@
       ctx.font = urgent ? 'bold 15px sans-serif' : '13px sans-serif';
       ctx.globalAlpha = 0.85;
       ctx.fillStyle = urgent ? '#ff2020' : '#ff9900';
-      const def = SPRITE_SPECIES[f.species];
-      const yOff = def ? Math.round(def.targetH * SPRITE_SCALE * 0.55 + 10) : 52;
-      ctx.fillText('!', f.x, f.y - yOff);
+      ctx.fillText('!', f.x, f.y - 52);
     }
     ctx.restore();
   }
@@ -1302,51 +1231,68 @@
   }
 
   // ===================== GENERIC SPRITE FISH =====================
-  // 2-section rendering: body+head (1:1 draw from pre-scaled canvas, no clip) +
-  // tail (clip + rotate from pre-scaled canvas). Outer transform adds subtle body lean.
-  // vs old 3-section: saves 1 clip + 1 drawImage per fish per frame.
-  // vs 1-slice: restores proper tail-wag animation.
-  // Pre-scaled sprites mean every drawImage is a 1:1 pixel copy — no GPU scaling.
+  // 3-section rendering: front body (rigid) → mid-posterior (subtle wave) → tail (full wag).
+  // Mid and tail use hierarchical transforms so section boundaries are seamless.
   function drawSpriteSheetFish(f) {
     const def = SPRITE_SPECIES[f.species];
     if (!def) return;
-
-    const pbKey = f.visualParams && f.visualParams.prebakeKey;
-    // pbKey variants are pre-scaled+filtered directly; base uses ':ps' pre-scaled version.
-    const sprite = (pbKey && SPRITES[pbKey]) || SPRITES[def.sheet + ':ps'] || SPRITES[def.sheet];
+    const sprite = SPRITES[def.sheet];
     if (!sprite) return;
 
-    const phase    = f.tailPhase;
-    const { tailRatio, facesLeft } = def;
-    // Pre-scaled sprite is already at target dimensions; no per-frame fraction math
-    const targetW  = sprite.width;
-    const targetH  = sprite.height;
-    const tailW    = Math.round(targetW * tailRatio);
-    const OVERLAP  = Math.max(4, Math.round(targetH * 0.05));
+    const phase = f.tailPhase;
+    const { targetH, tailRatio, facesLeft } = def;
 
-    const gs      = f.growthScale || 1.0;
-    const scaleX  = (facesLeft ? -1 : 1) * (f.renderDir || 1) * gs;
+    const sx = def.fx * sprite.width,  sy = def.fy * sprite.height;
+    const sw = def.fw * sprite.width,  sh = def.fh * sprite.height;
 
-    const midAmp    = SPECIES_MID_AMP[f.species] || 0.07;
-    const bodyLean  = Math.sin(phase - Math.PI * 0.4) * midAmp * 0.5; // slight lead before tail
+    const targetW  = targetH * (sw / sh);
+    const tailW    = targetW * tailRatio;
+    const midW     = targetW * 0.24;     // posterior body section (24% of width)
+    const OVERLAP  = Math.max(5, Math.round(targetH * 0.06));
+
+    // Per-species body flexibility; phase offset creates traveling S-wave head→tail
+    const midAmp   = SPECIES_MID_AMP[f.species] || 0.07;
+    const midAngle = Math.sin(phase - Math.PI / 5) * midAmp;
     const tailAngle = Math.sin(phase) * 0.22;
+
+    const gs = f.growthScale || 1.0;
+    // renderDir is a float [-1,1] — near 0 produces a natural squish as the fish turns
+    const scaleX = (facesLeft ? -1 : 1) * (f.renderDir || 1) * gs;
 
     ctx.save();
     ctx.translate(f.x, f.y + Math.sin(phase * 0.7) * 1.5);
-    if (!pbKey && f.visualParams && f.visualParams.colorFilter) { ctx.filter = f.visualParams.colorFilter; }
+    if (f.visualParams && f.visualParams.colorFilter) { ctx.filter = f.visualParams.colorFilter; }
     ctx.scale(scaleX, gs);
-    ctx.rotate(Math.atan2(f.vy, Math.abs(f.vx) + 0.01) * 0.2 + bodyLean);
+    ctx.rotate(Math.atan2(f.vy, Math.abs(f.vx) + 0.01) * 0.2);
 
     if (facesLeft) {
-      // Head at LEFT (-targetW/2), tail at RIGHT
+      // Head at -targetW/2 (left), tail at +targetW/2 (right)
       const pivotTail = targetW / 2 - tailW;
-      const bodyW     = targetW - tailW + OVERLAP;
+      const pivotMid  = targetW / 2 - tailW - midW;
 
-      // Body+head: 1:1 source-rect copy — no GPU scaling, no clip
-      ctx.drawImage(sprite, 0, 0, bodyW, targetH,
-        -targetW / 2, -targetH / 2, bodyW, targetH);
+      // 1. Front body / head — no rotation
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(-targetW / 2, -targetH / 2 - 4, targetW - tailW - midW + OVERLAP, targetH + 8);
+      ctx.clip();
+      ctx.drawImage(sprite, sx, sy, sw, sh, -targetW / 2, -targetH / 2, targetW, targetH);
+      ctx.restore();
 
-      // Tail: wagging right end
+      // 2. Mid + Tail — mid rotation applied first; tail nested within it for seamless joint
+      ctx.save();
+      ctx.translate(pivotMid, 0);
+      ctx.rotate(midAngle);
+      ctx.translate(-pivotMid, 0);
+
+      // 2a. Mid body (posterior wave)
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(pivotMid - OVERLAP, -targetH / 2 - 4, midW + 2 * OVERLAP, targetH + 8);
+      ctx.clip();
+      ctx.drawImage(sprite, sx, sy, sw, sh, -targetW / 2, -targetH / 2, targetW, targetH);
+      ctx.restore();
+
+      // 2b. Tail — nested in mid's rotated frame; pivot is at tail-root inside that frame
       ctx.save();
       ctx.translate(pivotTail, 0);
       ctx.rotate(tailAngle);
@@ -1354,20 +1300,39 @@
       ctx.beginPath();
       ctx.rect(pivotTail - OVERLAP, -targetH / 2 - 4, tailW + OVERLAP, targetH + 8);
       ctx.clip();
-      ctx.drawImage(sprite, 0, 0, targetW, targetH, -targetW / 2, -targetH / 2, targetW, targetH);
+      ctx.drawImage(sprite, sx, sy, sw, sh, -targetW / 2, -targetH / 2, targetW, targetH);
       ctx.restore();
 
+      ctx.restore(); // end mid rotation
+
     } else {
-      // Head at RIGHT (+targetW/2), tail at LEFT
+      // Head at +targetW/2 (right), tail at -targetW/2 (left)
       const pivotTail = -targetW / 2 + tailW;
-      const bodyW     = targetW - tailW + OVERLAP;
+      const pivotMid  = -targetW / 2 + tailW + midW;
 
-      // Body+head: 1:1 source-rect copy of right portion — no GPU scaling, no clip
-      ctx.drawImage(sprite,
-        Math.max(0, tailW - OVERLAP), 0, bodyW, targetH,
-        pivotTail - OVERLAP, -targetH / 2, bodyW, targetH);
+      // 1. Front body / head — no rotation
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(pivotMid - OVERLAP, -targetH / 2 - 4, targetW - tailW - midW + OVERLAP, targetH + 8);
+      ctx.clip();
+      ctx.drawImage(sprite, sx, sy, sw, sh, -targetW / 2, -targetH / 2, targetW, targetH);
+      ctx.restore();
 
-      // Tail: wagging left end
+      // 2. Mid + Tail — hierarchical
+      ctx.save();
+      ctx.translate(pivotMid, 0);
+      ctx.rotate(midAngle);
+      ctx.translate(-pivotMid, 0);
+
+      // 2a. Mid body
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(pivotTail - OVERLAP, -targetH / 2 - 4, midW + 2 * OVERLAP, targetH + 8);
+      ctx.clip();
+      ctx.drawImage(sprite, sx, sy, sw, sh, -targetW / 2, -targetH / 2, targetW, targetH);
+      ctx.restore();
+
+      // 2b. Tail — nested in mid's frame
       ctx.save();
       ctx.translate(pivotTail, 0);
       ctx.rotate(tailAngle);
@@ -1375,10 +1340,11 @@
       ctx.beginPath();
       ctx.rect(-targetW / 2, -targetH / 2 - 4, tailW + OVERLAP, targetH + 8);
       ctx.clip();
-      ctx.drawImage(sprite, 0, 0, targetW, targetH, -targetW / 2, -targetH / 2, targetW, targetH);
+      ctx.drawImage(sprite, sx, sy, sw, sh, -targetW / 2, -targetH / 2, targetW, targetH);
       ctx.restore();
-    }
 
+      ctx.restore(); // end mid rotation
+    }
     ctx.restore();
   }
 
@@ -1394,89 +1360,64 @@
       ctx.translate(f.x, f.y);
       ctx.scale(1, -1);
       ctx.translate(-f.x, -f.y);
-      if (def && (SPRITES[def.sheet + ':ps'] || SPRITES[def.sheet])) drawSpriteSheetFish(f);
+      if (def && SPRITES[def.sheet]) drawSpriteSheetFish(f);
       else if (f.species === 'arowana') drawArowanaCanvas(f);
       else drawGeneric(f);
       ctx.restore();
       return;
     }
 
-    if (def && (SPRITES[def.sheet + ':ps'] || SPRITES[def.sheet])) { drawSpriteSheetFish(f); return; }
+    if (def && SPRITES[def.sheet]) { drawSpriteSheetFish(f); return; }
     if (f.species === 'arowana') drawArowanaCanvas(f);
     else if (f.species === 'oscar') drawOscar(f);
     else drawGeneric(f);
   }
 
-  // Soft elliptical shadow under each fish — all fish drawn in one save/restore block
-  function drawAllShadows() {
-    if (fish.length === 0) return;
+  // Soft elliptical shadow under each fish — depth cue
+  function drawFishShadow(f) {
+    const def = SPRITE_SPECIES[f.species];
+    const fishH = def ? def.targetH : 50;
+    const fishW = fishH * 2.2;
     const floorY = H - 28;
+    const dist = floorY - f.y;
+    if (dist > H * 0.65) return;  // too far up — shadow invisible
+    const alpha = Math.max(0, 0.22 - dist / (H * 0.65) * 0.22);
+    const scaleX = Math.max(0.3, 1 - dist / (H * 0.55));
     ctx.save();
+    ctx.globalAlpha = alpha;
     ctx.fillStyle = '#000';
-    for (const f of fish) {
-      const def = SPRITE_SPECIES[f.species];
-      const fishH = def ? def.targetH * SPRITE_SCALE : 50;
-      const fishW = fishH * 2.2;
-      const dist = floorY - f.y;
-      if (dist > H * 0.65) continue;
-      const alpha = Math.max(0, 0.22 - dist / (H * 0.65) * 0.22);
-      if (alpha <= 0) continue;
-      const scaleX = Math.max(0.3, 1 - dist / (H * 0.55));
-      ctx.globalAlpha = alpha;
-      ctx.beginPath();
-      ctx.ellipse(f.x, floorY - 2, fishW * 0.42 * scaleX, 5, 0, 0, Math.PI * 2);
-      ctx.fill();
-    }
+    ctx.beginPath();
+    ctx.ellipse(f.x, floorY - 2, fishW * 0.42 * scaleX, 5, 0, 0, Math.PI * 2);
+    ctx.fill();
     ctx.restore();
   }
 
   function render(t) {
-    const zoomed = Math.abs(currentZoom - 1.0) > 0.005;
-    if (zoomed) {
-      ctx.save();
-      ctx.translate(W / 2, H / 2);
-      ctx.scale(currentZoom, currentZoom);
-      ctx.translate(-W / 2, -H / 2);
-    }
     drawBackground(t);
     drawPlants(t);
     drawWaste();
     drawBubbles();
     drawFood();
-    drawAllShadows();
+    for (const f of fish) drawFishShadow(f);
     for (const f of fish) drawFish(f);
     drawHungerIndicators(t);
     drawDayNight();
-    if (zoomed) ctx.restore();
     drawTooltip();
   }
 
-  // Frame-rate cap — adaptive: fewer fish = smoother; more fish = lower fps to keep CPU down.
-  // 30fps for <=5 fish, 24fps for 6-9 fish, 20fps for 10+ fish.
-  const FRAME_MS = 1000 / 30;
-  let lastRender = 0;
-
   function loop(now) {
-    requestAnimationFrame(loop);
-    if (document.hidden) return;              // pause when panel is not visible
-    const targetMs = fish.length >= 10 ? 50 : fish.length >= 6 ? 1000 / 24 : FRAME_MS;
-    const elapsed = now - lastRender;
-    if (elapsed < targetMs) return;           // adaptive frame-rate cap
-    lastRender = now - (elapsed % targetMs);  // keep timing stable
     const dt = Math.min(0.05, (now - lastTime) / 1000);
     lastTime = now;
     update(dt);
     render(now / 1000);
+    requestAnimationFrame(loop);
   }
 
   // ---------- Interaction ----------
   function dropFood(x, y, type) {
     const foodType = type || currentFood || 'pellet';
     const count = foodType === 'superworm' ? 3 : foodType === 'cricket' ? 4 : 6;
-    // Cap total pellets to keep O(fish x pellets) cost bounded
-    const MAX_PELLETS = 18;
-    const toAdd = Math.min(count, Math.max(0, MAX_PELLETS - pellets.length));
-    for (let i = 0; i < toAdd; i++) {
+    for (let i = 0; i < count; i++) {
       pellets.push({
         x: x + (Math.random() - 0.5) * 50,
         y: y + (Math.random() - 0.5) * 10,
@@ -1491,17 +1432,9 @@
 
   canvas.addEventListener('click', (e) => {
     const rect = canvas.getBoundingClientRect();
-    const sx = e.clientX - rect.left, sy = e.clientY - rect.top;
-    // Inverse-transform screen coords → world coords (accounts for zoom)
-    const mx = (sx - W / 2) / currentZoom + W / 2;
-    const my = (sy - H / 2) / currentZoom + H / 2;
+    const mx = e.clientX - rect.left, my = e.clientY - rect.top;
     // Click on a fish → show tooltip instead of dropping food
-    const hit = fish.find(f => {
-      if (f.dead) return false;
-      const def = SPRITE_SPECIES[f.species];
-      const r = def ? def.targetH * SPRITE_SCALE * 0.4 : 45;
-      return Math.hypot(f.x - mx, f.y - my) < r;
-    });
+    const hit = fish.find(f => !f.dead && Math.hypot(f.x - mx, f.y - my) < 45);
     if (hit) {
       const pref = (FOOD_PREFERENCE[hit.species] || []).map(t => `${t}`).join(', ') || 'any';
       const moodStr = hit.hunger < 25 ? '😊 Happy' : hit.hunger < 50 ? '🙂 Content' : hit.hunger < 75 ? '😐 Hungry' : '😡 Starving!';
@@ -1513,7 +1446,7 @@
           moodStr,
           `Loves: ${pref}`,
         ],
-        x: sx, y: sy,   // tooltip in screen space (drawn outside zoom transform)
+        x: mx, y: my,
         expires: performance.now() + 4000,
       };
       return;
@@ -1595,14 +1528,6 @@
   });
   updateLightBtn();
 
-  const zoomBtn = document.getElementById('zoomBtn');
-  const ZOOM_LABELS = ['1x', '1.5x', '2x'];
-  zoomBtn.addEventListener('click', () => {
-    zoomIdx = (zoomIdx + 1) % ZOOM_STEPS.length;
-    targetZoom = ZOOM_STEPS[zoomIdx];
-    zoomBtn.innerHTML = `<i class="fa-solid fa-magnifying-glass-plus"></i> ${ZOOM_LABELS[zoomIdx]}`;
-  });
-
   window.addEventListener('message', (e) => {
     const msg = e.data;
     if (msg.type === 'state') {
@@ -1617,9 +1542,8 @@
 
   // ---------- Init ----------
   loadSprites().then(() => {
-    prebakeVariants();
     resize();
     vscode.postMessage({ type: 'ready' });
-    requestAnimationFrame((t) => { lastTime = t; lastRender = t; loop(t); });
+    requestAnimationFrame((t) => { lastTime = t; loop(t); });
   });
 })();
