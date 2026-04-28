@@ -122,28 +122,28 @@
   // Chroma-key removal (dead code preserved for future use — not called in runtime)
   // function removeColorBackground(img, tolerance) { ... }
 
-  // Pre-bake every non-trivial color variant into its own offscreen canvas at target size.
-  // Source is the already-scaled ':ps' sprite, so bake is a 1:1 filtered copy.
-  // imageSmoothingQuality='high' on the bake context produces bicubic quality.
-  // Eliminates ctx.filter on the main canvas per fish per frame — largest GPU win.
+  // Pre-bake every non-trivial color variant into its own offscreen canvas.
+  // Source is the full-res raw sprite so drawing remains sharp at any zoom level.
+  // imageSmoothingQuality='high' on the bake context ensures the filter is applied
+  // at full resolution. Eliminates ctx.filter on the main canvas per fish per frame.
   function prebakeVariants() {
     for (const [species, variants] of Object.entries(SPECIES_COLOR_VARIANTS)) {
       const def = SPRITE_SPECIES[species];
       if (!def) continue;
-      const base = SPRITES[def.sheet + ':ps'];
+      const base = SPRITES[def.sheet];
       if (!base) continue;
-      const tw = base.width, th = base.height;
+      const sw = base.width, sh = base.height;
       for (const variant of variants) {
         if (!variant.filter) continue;
         const key = def.sheet + ':' + variant.id;
         if (SPRITES[key]) continue;
         const bc = document.createElement('canvas');
-        bc.width = tw; bc.height = th;
+        bc.width = sw; bc.height = sh;
         const bctx = bc.getContext('2d');
         bctx.imageSmoothingEnabled = true;
         bctx.imageSmoothingQuality = 'high';
         bctx.filter = variant.filter;
-        bctx.drawImage(base, 0, 0, tw, th);
+        bctx.drawImage(base, 0, 0, sw, sh);
         SPRITES[key] = bc;
       }
     }
@@ -156,22 +156,7 @@
     return Promise.all(keys.map(key => new Promise(resolve => {
       const img = new Image();
       img.onload = () => {
-        const raw = removeWhiteBackground(img);
-        SPRITES[key] = raw;
-        // Pre-scale to target render height so every drawImage is a 1:1 pixel copy.
-        // imageSmoothingQuality='high' on the offscreen context = bicubic downscale.
-        const def = Object.values(SPRITE_SPECIES).find(d => d.sheet === key);
-        if (def) {
-          const th = def.targetH;
-          const tw = Math.round(th * raw.width / raw.height);
-          const ps = document.createElement('canvas');
-          ps.width = tw; ps.height = th;
-          const pctx = ps.getContext('2d');
-          pctx.imageSmoothingEnabled = true;
-          pctx.imageSmoothingQuality = 'high';
-          pctx.drawImage(raw, 0, 0, tw, th);
-          SPRITES[key + ':ps'] = ps;
-        }
+        SPRITES[key] = removeWhiteBackground(img);
         resolve();
       };
       img.onerror = resolve;
@@ -1297,21 +1282,24 @@
 
   // ===================== GENERIC SPRITE FISH =====================
   // 3-section rendering: rigid head/body → mid-body wave → tail wag.
-  // All drawImage calls are 1:1 pixel copies from pre-scaled canvases —
-  // no GPU scaling per frame. ctx.filter is never set on the main context;
-  // color variants come from pre-baked offscreen canvases.
+  // GPU scales from full-res source (or full-res pre-baked variant canvas) to
+  // targetW×targetH at draw time — sharp at any VS Code zoom level.
+  // ctx.filter is never set on the main context; color variants come from
+  // pre-baked full-res offscreen canvases (the main GPU win vs original).
   function drawSpriteSheetFish(f) {
     const def = SPRITE_SPECIES[f.species];
     if (!def) return;
 
     const pbKey = f.visualParams && f.visualParams.prebakeKey;
-    const sprite = (pbKey && SPRITES[pbKey]) || SPRITES[def.sheet + ':ps'] || SPRITES[def.sheet];
+    const sprite = (pbKey && SPRITES[pbKey]) || SPRITES[def.sheet];
     if (!sprite) return;
 
     const phase   = f.tailPhase;
     const { tailRatio, facesLeft } = def;
-    const targetW = sprite.width;
-    const targetH = sprite.height;
+    const sw      = sprite.width;
+    const sh      = sprite.height;
+    const targetH = def.targetH;
+    const targetW = Math.round(targetH * sw / sh);
     const tailW   = Math.round(targetW * tailRatio);
     const midW    = Math.round(targetW * 0.24);
     const OVERLAP = Math.max(4, Math.round(targetH * 0.06));
@@ -1336,7 +1324,7 @@
       ctx.beginPath();
       ctx.rect(-targetW / 2, -targetH / 2 - 4, targetW - tailW - midW + OVERLAP, targetH + 8);
       ctx.clip();
-      ctx.drawImage(sprite, 0, 0, targetW, targetH, -targetW / 2, -targetH / 2, targetW, targetH);
+      ctx.drawImage(sprite, 0, 0, sw, sh, -targetW / 2, -targetH / 2, targetW, targetH);
       ctx.restore();
 
       ctx.save();
@@ -1346,7 +1334,7 @@
       ctx.beginPath();
       ctx.rect(pivotMid - OVERLAP, -targetH / 2 - 4, midW + 2 * OVERLAP, targetH + 8);
       ctx.clip();
-      ctx.drawImage(sprite, 0, 0, targetW, targetH, -targetW / 2, -targetH / 2, targetW, targetH);
+      ctx.drawImage(sprite, 0, 0, sw, sh, -targetW / 2, -targetH / 2, targetW, targetH);
       ctx.restore();
 
       ctx.save();
@@ -1354,7 +1342,7 @@
       ctx.beginPath();
       ctx.rect(pivotTail - OVERLAP, -targetH / 2 - 4, tailW + OVERLAP, targetH + 8);
       ctx.clip();
-      ctx.drawImage(sprite, 0, 0, targetW, targetH, -targetW / 2, -targetH / 2, targetW, targetH);
+      ctx.drawImage(sprite, 0, 0, sw, sh, -targetW / 2, -targetH / 2, targetW, targetH);
       ctx.restore();
 
       ctx.restore();
@@ -1367,7 +1355,7 @@
       ctx.beginPath();
       ctx.rect(pivotMid - OVERLAP, -targetH / 2 - 4, targetW - tailW - midW + OVERLAP, targetH + 8);
       ctx.clip();
-      ctx.drawImage(sprite, 0, 0, targetW, targetH, -targetW / 2, -targetH / 2, targetW, targetH);
+      ctx.drawImage(sprite, 0, 0, sw, sh, -targetW / 2, -targetH / 2, targetW, targetH);
       ctx.restore();
 
       ctx.save();
@@ -1377,7 +1365,7 @@
       ctx.beginPath();
       ctx.rect(pivotTail - OVERLAP, -targetH / 2 - 4, midW + 2 * OVERLAP, targetH + 8);
       ctx.clip();
-      ctx.drawImage(sprite, 0, 0, targetW, targetH, -targetW / 2, -targetH / 2, targetW, targetH);
+      ctx.drawImage(sprite, 0, 0, sw, sh, -targetW / 2, -targetH / 2, targetW, targetH);
       ctx.restore();
 
       ctx.save();
@@ -1385,7 +1373,7 @@
       ctx.beginPath();
       ctx.rect(-targetW / 2, -targetH / 2 - 4, tailW + OVERLAP, targetH + 8);
       ctx.clip();
-      ctx.drawImage(sprite, 0, 0, targetW, targetH, -targetW / 2, -targetH / 2, targetW, targetH);
+      ctx.drawImage(sprite, 0, 0, sw, sh, -targetW / 2, -targetH / 2, targetW, targetH);
       ctx.restore();
 
       ctx.restore();
@@ -1404,14 +1392,14 @@
       ctx.translate(f.x, f.y);
       ctx.scale(1, -1);
       ctx.translate(-f.x, -f.y);
-      if (def && (SPRITES[def.sheet + ':ps'] || SPRITES[def.sheet])) drawSpriteSheetFish(f);
+      if (def && SPRITES[def.sheet]) drawSpriteSheetFish(f);
       else if (f.species === 'arowana') drawArowanaCanvas(f);
       else drawGeneric(f);
       ctx.restore();
       return;
     }
 
-    if (def && (SPRITES[def.sheet + ':ps'] || SPRITES[def.sheet])) { drawSpriteSheetFish(f); return; }
+    if (def && SPRITES[def.sheet]) { drawSpriteSheetFish(f); return; }
     if (f.species === 'arowana') drawArowanaCanvas(f);
     else if (f.species === 'oscar') drawOscar(f);
     else drawGeneric(f);
