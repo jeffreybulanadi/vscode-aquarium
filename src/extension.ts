@@ -38,7 +38,7 @@ const SPECIES_COLOR_VARIANTS_EXT: Record<string, string[]> = {
 let panel: vscode.WebviewPanel | undefined;
 let statusBar: vscode.StatusBarItem | undefined;
 
-export function activate(context: vscode.ExtensionContext) {
+export async function activate(context: vscode.ExtensionContext) {
   // Status bar — always visible summary of tank health
   statusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
   statusBar.command = 'aquarium.open';
@@ -50,6 +50,21 @@ export function activate(context: vscode.ExtensionContext) {
   const cfg = getConfig();
   const autoOpen = cfg.get<boolean>('autoOpen', true);
   const welcomed = context.globalState.get<boolean>('aquarium.welcomed', false);
+
+  // One-time migration: clear old default fish so users start with an empty tank.
+  const migrationVersion = context.globalState.get<number>('aquarium.migrationVersion', 0);
+  if (migrationVersion < 2) {
+    const rawFish = cfg.get<any[]>('fish', []);
+    // Detect any of the old default fingerprints (arowana + oscars, or just oscars)
+    const isOldDefault = rawFish.every(f =>
+      (f.species === 'arowana' && !f.colorVariant) ||
+      (f.species === 'oscar' && (f.colorVariant === 'tiger' || f.colorVariant === 'albino'))
+    ) && rawFish.length > 0 && rawFish.length <= 3;
+    if (isOldDefault) {
+      await cfg.update('fish', [], vscode.ConfigurationTarget.Global);
+    }
+    await context.globalState.update('aquarium.migrationVersion', 2);
+  }
 
   if (autoOpen) {
     openAquarium(context);
@@ -160,10 +175,8 @@ function pushState(context: vscode.ExtensionContext) {
   const validSpecies = new Set(type === 'freshwater' ? FRESHWATER_SPECIES : SALTWATER_SPECIES);
   const rawFish = cfg.get<any[]>('fish', []);
   const filteredFish = rawFish.filter(f => f && validSpecies.has(f.species));
-  const fish = filteredFish.length > 0 ? filteredFish : [
-    { species: 'oscar',   colorVariant: 'tiger'  },
-    { species: 'oscar',   colorVariant: 'albino' },
-  ];
+  const fish = filteredFish.length > 0 ? filteredFish : [];
+
   const coins = context.globalState.get<number>('aquarium.coins', 0);
   panel.webview.postMessage({
     type: 'state',
@@ -206,9 +219,8 @@ async function switchType(context: vscode.ExtensionContext) {
   const cfg = getConfig();
   const cur = cfg.get<string>('type', 'freshwater');
   const next = cur === 'freshwater' ? 'saltwater' : 'freshwater';
-  const defaults = next === 'freshwater'
-    ? [{ species: 'oscar', colorVariant: 'tiger' }, { species: 'oscar', colorVariant: 'albino' }]
-    : [{ species: 'clownfish' }, { species: 'tang' }];
+  const defaults = next === 'freshwater' ? [] : [];
+
   await cfg.update('type', next, vscode.ConfigurationTarget.Global);
   await cfg.update('fish', defaults, vscode.ConfigurationTarget.Global);
   pushState(context);

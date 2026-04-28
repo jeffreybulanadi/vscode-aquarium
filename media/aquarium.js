@@ -122,6 +122,33 @@
   // Chroma-key removal (dead code preserved for future use — not called in runtime)
   // function removeColorBackground(img, tolerance) { ... }
 
+  // Pre-bake every non-trivial color variant into its own offscreen canvas at target size.
+  // Source is the already-scaled ':ps' sprite, so bake is a 1:1 filtered copy.
+  // imageSmoothingQuality='high' on the bake context produces bicubic quality.
+  // Eliminates ctx.filter on the main canvas per fish per frame — largest GPU win.
+  function prebakeVariants() {
+    for (const [species, variants] of Object.entries(SPECIES_COLOR_VARIANTS)) {
+      const def = SPRITE_SPECIES[species];
+      if (!def) continue;
+      const base = SPRITES[def.sheet + ':ps'];
+      if (!base) continue;
+      const tw = base.width, th = base.height;
+      for (const variant of variants) {
+        if (!variant.filter) continue;
+        const key = def.sheet + ':' + variant.id;
+        if (SPRITES[key]) continue;
+        const bc = document.createElement('canvas');
+        bc.width = tw; bc.height = th;
+        const bctx = bc.getContext('2d');
+        bctx.imageSmoothingEnabled = true;
+        bctx.imageSmoothingQuality = 'high';
+        bctx.filter = variant.filter;
+        bctx.drawImage(base, 0, 0, tw, th);
+        SPRITES[key] = bc;
+      }
+    }
+  }
+
   function loadSprites() {
     const assets = window.FISH_ASSETS || {};
     const keys = Object.keys(assets);
@@ -129,7 +156,22 @@
     return Promise.all(keys.map(key => new Promise(resolve => {
       const img = new Image();
       img.onload = () => {
-        SPRITES[key] = removeWhiteBackground(img);
+        const raw = removeWhiteBackground(img);
+        SPRITES[key] = raw;
+        // Pre-scale to target render height so every drawImage is a 1:1 pixel copy.
+        // imageSmoothingQuality='high' on the offscreen context = bicubic downscale.
+        const def = Object.values(SPRITE_SPECIES).find(d => d.sheet === key);
+        if (def) {
+          const th = def.targetH;
+          const tw = Math.round(th * raw.width / raw.height);
+          const ps = document.createElement('canvas');
+          ps.width = tw; ps.height = th;
+          const pctx = ps.getContext('2d');
+          pctx.imageSmoothingEnabled = true;
+          pctx.imageSmoothingQuality = 'high';
+          pctx.drawImage(raw, 0, 0, tw, th);
+          SPRITES[key + ':ps'] = ps;
+        }
         resolve();
       };
       img.onerror = resolve;
@@ -351,6 +393,11 @@
       variant = variants[Math.floor(Math.random() * variants.length)];
     }
     const base = { colorVariant: variant ? variant.id : 'default', colorFilter: variant ? variant.filter : '' };
+    // prebakeKey points to a pre-baked filtered canvas (set after loadSprites).
+    if (variant && variant.filter) {
+      const def = SPRITE_SPECIES[species];
+      if (def) base.prebakeKey = def.sheet + ':' + variant.id;
+    }
     if (species === 'oscar') {
       // Pre-compute orange patch positions once — avoid per-frame Math.random flicker
       const L = 65, Bh = 52;
@@ -403,12 +450,7 @@
   function rebuildFish(list) {
     // Filter out removed/unknown species so stale settings don't cause blank fish
     const valid = list.filter(entry => !!SPRITE_SPECIES[entry.species]);
-    const defaults = [
-      { species: 'oscar',   colorVariant: 'tiger'  },
-      { species: 'oscar',   colorVariant: 'albino' },
-    ];
-    fish = (valid.length > 0 ? valid : defaults)
-      .map(entry => makeFish(entry.species, entry.colorVariant));
+    fish = valid.map(entry => makeFish(entry.species, entry.colorVariant));
     fish.forEach(clampFish);
     const typeText = aquariumType === 'saltwater' ? 'Saltwater' : 'Freshwater';
     label.innerHTML = `<i class="fa-solid fa-fish"></i> ${typeText} · ${fish.length} fish`;
@@ -1255,22 +1297,21 @@
 
   // ===================== GENERIC SPRITE FISH =====================
   // 3-section rendering: rigid head/body → mid-body wave → tail wag.
-  // Hierarchical transforms produce a natural S-wave. Full-res sprites are
-  // GPU-scaled at draw time via imageSmoothingQuality='high' for crisp output.
-  // ctx.filter is applied once per fish for color variants (no pre-baking).
+  // All drawImage calls are 1:1 pixel copies from pre-scaled canvases —
+  // no GPU scaling per frame. ctx.filter is never set on the main context;
+  // color variants come from pre-baked offscreen canvases.
   function drawSpriteSheetFish(f) {
     const def = SPRITE_SPECIES[f.species];
     if (!def) return;
 
-    const sprite = SPRITES[def.sheet];
+    const pbKey = f.visualParams && f.visualParams.prebakeKey;
+    const sprite = (pbKey && SPRITES[pbKey]) || SPRITES[def.sheet + ':ps'] || SPRITES[def.sheet];
     if (!sprite) return;
 
-    const phase = f.tailPhase;
+    const phase   = f.tailPhase;
     const { tailRatio, facesLeft } = def;
-    const sw      = sprite.width;
-    const sh      = sprite.height;
-    const targetH = def.targetH;
-    const targetW = Math.round(targetH * sw / sh);
+    const targetW = sprite.width;
+    const targetH = sprite.height;
     const tailW   = Math.round(targetW * tailRatio);
     const midW    = Math.round(targetW * 0.24);
     const OVERLAP = Math.max(4, Math.round(targetH * 0.06));
@@ -1284,7 +1325,6 @@
 
     ctx.save();
     ctx.translate(f.x, f.y + Math.sin(phase * 0.7) * 1.5);
-    ctx.filter = (f.visualParams && f.visualParams.colorFilter) || 'none';
     ctx.scale(scaleX, gs);
     ctx.rotate(Math.atan2(f.vy, Math.abs(f.vx) + 0.01) * 0.2);
 
@@ -1292,35 +1332,29 @@
       const pivotTail = targetW / 2 - tailW;
       const pivotMid  = targetW / 2 - tailW - midW;
 
-      // 1. Head/body — rigid
       ctx.save();
       ctx.beginPath();
       ctx.rect(-targetW / 2, -targetH / 2 - 4, targetW - tailW - midW + OVERLAP, targetH + 8);
       ctx.clip();
-      ctx.drawImage(sprite, 0, 0, sw, sh, -targetW / 2, -targetH / 2, targetW, targetH);
+      ctx.drawImage(sprite, 0, 0, targetW, targetH, -targetW / 2, -targetH / 2, targetW, targetH);
       ctx.restore();
 
-      // 2. Mid + tail — nested rotations
       ctx.save();
-      ctx.translate(pivotMid, 0);
-      ctx.rotate(midAngle);
-      ctx.translate(-pivotMid, 0);
+      ctx.translate(pivotMid, 0); ctx.rotate(midAngle); ctx.translate(-pivotMid, 0);
 
       ctx.save();
       ctx.beginPath();
       ctx.rect(pivotMid - OVERLAP, -targetH / 2 - 4, midW + 2 * OVERLAP, targetH + 8);
       ctx.clip();
-      ctx.drawImage(sprite, 0, 0, sw, sh, -targetW / 2, -targetH / 2, targetW, targetH);
+      ctx.drawImage(sprite, 0, 0, targetW, targetH, -targetW / 2, -targetH / 2, targetW, targetH);
       ctx.restore();
 
       ctx.save();
-      ctx.translate(pivotTail, 0);
-      ctx.rotate(tailAngle);
-      ctx.translate(-pivotTail, 0);
+      ctx.translate(pivotTail, 0); ctx.rotate(tailAngle); ctx.translate(-pivotTail, 0);
       ctx.beginPath();
       ctx.rect(pivotTail - OVERLAP, -targetH / 2 - 4, tailW + OVERLAP, targetH + 8);
       ctx.clip();
-      ctx.drawImage(sprite, 0, 0, sw, sh, -targetW / 2, -targetH / 2, targetW, targetH);
+      ctx.drawImage(sprite, 0, 0, targetW, targetH, -targetW / 2, -targetH / 2, targetW, targetH);
       ctx.restore();
 
       ctx.restore();
@@ -1329,35 +1363,29 @@
       const pivotTail = -targetW / 2 + tailW;
       const pivotMid  = -targetW / 2 + tailW + midW;
 
-      // 1. Head/body — rigid
       ctx.save();
       ctx.beginPath();
       ctx.rect(pivotMid - OVERLAP, -targetH / 2 - 4, targetW - tailW - midW + OVERLAP, targetH + 8);
       ctx.clip();
-      ctx.drawImage(sprite, 0, 0, sw, sh, -targetW / 2, -targetH / 2, targetW, targetH);
+      ctx.drawImage(sprite, 0, 0, targetW, targetH, -targetW / 2, -targetH / 2, targetW, targetH);
       ctx.restore();
 
-      // 2. Mid + tail — hierarchical
       ctx.save();
-      ctx.translate(pivotMid, 0);
-      ctx.rotate(midAngle);
-      ctx.translate(-pivotMid, 0);
+      ctx.translate(pivotMid, 0); ctx.rotate(midAngle); ctx.translate(-pivotMid, 0);
 
       ctx.save();
       ctx.beginPath();
       ctx.rect(pivotTail - OVERLAP, -targetH / 2 - 4, midW + 2 * OVERLAP, targetH + 8);
       ctx.clip();
-      ctx.drawImage(sprite, 0, 0, sw, sh, -targetW / 2, -targetH / 2, targetW, targetH);
+      ctx.drawImage(sprite, 0, 0, targetW, targetH, -targetW / 2, -targetH / 2, targetW, targetH);
       ctx.restore();
 
       ctx.save();
-      ctx.translate(pivotTail, 0);
-      ctx.rotate(tailAngle);
-      ctx.translate(-pivotTail, 0);
+      ctx.translate(pivotTail, 0); ctx.rotate(tailAngle); ctx.translate(-pivotTail, 0);
       ctx.beginPath();
       ctx.rect(-targetW / 2, -targetH / 2 - 4, tailW + OVERLAP, targetH + 8);
       ctx.clip();
-      ctx.drawImage(sprite, 0, 0, sw, sh, -targetW / 2, -targetH / 2, targetW, targetH);
+      ctx.drawImage(sprite, 0, 0, targetW, targetH, -targetW / 2, -targetH / 2, targetW, targetH);
       ctx.restore();
 
       ctx.restore();
@@ -1376,14 +1404,14 @@
       ctx.translate(f.x, f.y);
       ctx.scale(1, -1);
       ctx.translate(-f.x, -f.y);
-      if (def && SPRITES[def.sheet]) drawSpriteSheetFish(f);
+      if (def && (SPRITES[def.sheet + ':ps'] || SPRITES[def.sheet])) drawSpriteSheetFish(f);
       else if (f.species === 'arowana') drawArowanaCanvas(f);
       else drawGeneric(f);
       ctx.restore();
       return;
     }
 
-    if (def && SPRITES[def.sheet]) { drawSpriteSheetFish(f); return; }
+    if (def && (SPRITES[def.sheet + ':ps'] || SPRITES[def.sheet])) { drawSpriteSheetFish(f); return; }
     if (f.species === 'arowana') drawArowanaCanvas(f);
     else if (f.species === 'oscar') drawOscar(f);
     else drawGeneric(f);
@@ -1433,8 +1461,17 @@
     drawTooltip();
   }
 
+  // 30fps cap + pause when hidden — cuts rAF callbacks by ~50% vs uncapped
+  // and eliminates all CPU/GPU work when the panel is not visible.
+  const FRAME_MS = 1000 / 30;
+  let lastRender = 0;
+
   function loop(now) {
     requestAnimationFrame(loop);
+    if (document.hidden) return;
+    const elapsed = now - lastRender;
+    if (elapsed < FRAME_MS) return;
+    lastRender = now - (elapsed % FRAME_MS);
     const dt = Math.min(0.05, (now - lastTime) / 1000);
     lastTime = now;
     update(dt);
@@ -1534,19 +1571,10 @@
 
   const resetBtn = document.getElementById('resetBtn');
   resetBtn.addEventListener('click', () => {
-    const defaults = [
-      { species: 'oscar',   colorVariant: 'tiger'  },
-      { species: 'oscar',   colorVariant: 'albino' },
-    ];
     fish.length = 0;
-    defaults.forEach(d => {
-      const f = makeFish(d.species, d.colorVariant);
-      fish.push(f);
-      clampFish(f);
-    });
     const typeText = aquariumType === 'saltwater' ? 'Saltwater' : 'Freshwater';
-    label.innerHTML = `<i class="fa-solid fa-fish"></i> ${typeText} · ${fish.length} fish`;
-    vscode.postMessage({ type: 'resetFish', fish: defaults });
+    label.innerHTML = `<i class="fa-solid fa-fish"></i> ${typeText} · 0 fish`;
+    vscode.postMessage({ type: 'resetFish', fish: [] });
   });
 
   const lightBtn = document.getElementById('lightBtn');
@@ -1588,8 +1616,9 @@
 
   // ---------- Init ----------
   loadSprites().then(() => {
+    prebakeVariants();
     resize();
     vscode.postMessage({ type: 'ready' });
-    requestAnimationFrame((t) => { lastTime = t; loop(t); });
+    requestAnimationFrame((t) => { lastTime = t; lastRender = t; loop(t); });
   });
 })();
