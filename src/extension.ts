@@ -161,7 +161,6 @@ function pushState(context: vscode.ExtensionContext) {
   const rawFish = cfg.get<any[]>('fish', []);
   const filteredFish = rawFish.filter(f => f && validSpecies.has(f.species));
   const fish = filteredFish.length > 0 ? filteredFish : [
-    { species: 'arowana', colorVariant: 'silver' },
     { species: 'oscar',   colorVariant: 'tiger'  },
     { species: 'oscar',   colorVariant: 'albino' },
   ];
@@ -208,7 +207,7 @@ async function switchType(context: vscode.ExtensionContext) {
   const cur = cfg.get<string>('type', 'freshwater');
   const next = cur === 'freshwater' ? 'saltwater' : 'freshwater';
   const defaults = next === 'freshwater'
-    ? [{ species: 'arowana', colorVariant: 'silver' }, { species: 'oscar', colorVariant: 'tiger' }, { species: 'oscar', colorVariant: 'albino' }]
+    ? [{ species: 'oscar', colorVariant: 'tiger' }, { species: 'oscar', colorVariant: 'albino' }]
     : [{ species: 'clownfish' }, { species: 'tang' }];
   await cfg.update('type', next, vscode.ConfigurationTarget.Global);
   await cfg.update('fish', defaults, vscode.ConfigurationTarget.Global);

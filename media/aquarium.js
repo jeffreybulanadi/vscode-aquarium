@@ -211,7 +211,7 @@
                    { id: 'albino',    filter: 'sepia(0.15) brightness(1.6) saturate(0.28)' }],
     angelfish:    [{ id: 'silver',    filter: '' },
                    { id: 'gold',      filter: 'sepia(0.6) saturate(2.2) hue-rotate(14deg) brightness(1.1)' },
-                   { id: 'black',     filter: 'brightness(0.25) contrast(2.4) saturate(0.18)' },
+                   { id: 'black',     filter: 'brightness(0.28) contrast(1.25) saturate(0.10)' },
                    { id: 'marble',    filter: 'contrast(1.5) hue-rotate(8deg) saturate(0.72)' }],
   };
 
@@ -404,7 +404,6 @@
     // Filter out removed/unknown species so stale settings don't cause blank fish
     const valid = list.filter(entry => !!SPRITE_SPECIES[entry.species]);
     const defaults = [
-      { species: 'arowana', colorVariant: 'silver' },
       { species: 'oscar',   colorVariant: 'tiger'  },
       { species: 'oscar',   colorVariant: 'albino' },
     ];
@@ -1536,7 +1535,6 @@
   const resetBtn = document.getElementById('resetBtn');
   resetBtn.addEventListener('click', () => {
     const defaults = [
-      { species: 'arowana', colorVariant: 'silver' },
       { species: 'oscar',   colorVariant: 'tiger'  },
       { species: 'oscar',   colorVariant: 'albino' },
     ];
