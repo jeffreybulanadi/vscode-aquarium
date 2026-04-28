@@ -37,9 +37,9 @@
   let cleanCooldown = 0;     // seconds until Clean button re-enables
   let tooltipData = null;    // { lines, x, y, expires (ms) }
   let lightMode = 'auto';    // 'auto' | 'day' | 'night'
-  // Scales every sprite by this factor at render time — no physics changes needed.
-  // 1.5 = 50% bigger (2.25x pixel area). Matching Ctrl+ zoom clarity without 4x fill cost.
-  const SPRITE_SCALE = 1.5;
+  // Sprite render scale — keep at 1.0 for best performance.
+  // Increase only for debugging; every 0.5 step = ~56% more GPU fill area.
+  const SPRITE_SCALE = 1.0;
 
   const ZOOM_STEPS = [1.0, 1.5, 2.0];
   let zoomIdx = 0;
@@ -470,6 +470,9 @@
     cleanCooldown = Math.max(0, cleanCooldown - dt);
     currentZoom += (targetZoom - currentZoom) * Math.min(1, dt * 7);
 
+    // Hoist performance.now() — used for speed variation; calling per-fish per-frame is wasteful.
+    const perfNow = performance.now();
+
     // ---- Fish update (index loop so we can splice dead fish) ----
     for (let i = fish.length - 1; i >= 0; i--) {
       const f = fish[i];
@@ -552,7 +555,7 @@
           if (Math.random() < 0.25) f.vx = -f.vx;
         }
         const spd = SPECIES_SPEED[f.species] || 25;
-        const baseSpeed = spd + Math.sin(performance.now() / 1500 + f.tailPhase) * spd * 0.3;
+        const baseSpeed = spd + Math.sin(perfNow / 1500 + f.tailPhase) * spd * 0.3;
         desiredVx = Math.sign(f.vx || 1) * baseSpeed;
         // Organic vertical weave: gentle sine tied to tail phase
         const weave = Math.sin(f.tailPhase * 0.4) * baseSpeed * 0.06;
@@ -631,6 +634,12 @@
     for (const p of plants) {
       ctx.save();
       ctx.translate(p.x, H - 28);
+      // One gradient per plant (vertical, base → tip) reused across all blades.
+      // Previously one gradient per blade = ~70 GPU allocs/frame; now ~10.
+      const grad = ctx.createLinearGradient(0, 0, 0, -p.height);
+      grad.addColorStop(0,   p.stopColors[0]);
+      grad.addColorStop(0.5, p.stopColors[1]);
+      grad.addColorStop(1,   p.stopColors[2]);
       const master = Math.sin(t * 1.2 + p.sway);
       for (let b = 0; b < p.blades; b++) {
         const ox = p.bladeOffsets[b];
@@ -640,12 +649,6 @@
         const cx1 = ox + sw * h * 0.30, cy1 = -h * 0.38;
         const cx2 = tx - sw * h * 0.08, cy2 = -h * 0.72;
         const hw  = Math.max(1.5, 4.2 - Math.abs(ox) * 0.05);
-
-        // Re-use cached stop color strings — no template literals / GC per blade
-        const grad = ctx.createLinearGradient(ox, 0, tx, ty);
-        grad.addColorStop(0,   p.stopColors[0]);
-        grad.addColorStop(0.5, p.stopColors[1]);
-        grad.addColorStop(1,   p.stopColors[2]);
 
         ctx.beginPath();
         ctx.moveTo(ox - hw, -1);
@@ -1440,10 +1443,13 @@
   }
 
   function render(t) {
-    ctx.save();
-    ctx.translate(W / 2, H / 2);
-    ctx.scale(currentZoom, currentZoom);
-    ctx.translate(-W / 2, -H / 2);
+    const zoomed = Math.abs(currentZoom - 1.0) > 0.005;
+    if (zoomed) {
+      ctx.save();
+      ctx.translate(W / 2, H / 2);
+      ctx.scale(currentZoom, currentZoom);
+      ctx.translate(-W / 2, -H / 2);
+    }
     drawBackground(t);
     drawPlants(t);
     drawWaste();
@@ -1453,7 +1459,7 @@
     for (const f of fish) drawFish(f);
     drawHungerIndicators(t);
     drawDayNight();
-    ctx.restore();
+    if (zoomed) ctx.restore();
     drawTooltip();
   }
 
