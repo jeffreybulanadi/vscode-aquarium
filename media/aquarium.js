@@ -341,6 +341,7 @@
     canvas.height = Math.floor(H * DPR);
     ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
     ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'medium';
     bgCanvas = null;  // invalidate baked background on resize
     seedPlants();
     fish.forEach(clampFish);
@@ -1302,51 +1303,68 @@
   }
 
   // ===================== GENERIC SPRITE FISH =====================
-  // 2-section rendering: body+head (1:1 draw from pre-scaled canvas, no clip) +
-  // tail (clip + rotate from pre-scaled canvas). Outer transform adds subtle body lean.
-  // vs old 3-section: saves 1 clip + 1 drawImage per fish per frame.
-  // vs 1-slice: restores proper tail-wag animation.
-  // Pre-scaled sprites mean every drawImage is a 1:1 pixel copy — no GPU scaling.
+  // 3-section rendering (restored from v1.2.0): rigid head/body → mid-body wave → tail wag.
+  // Hierarchical transforms produce a natural traveling S-wave from head to tail.
+  // Upgrade over v1.2.0: pre-scaled sprites make every drawImage a 1:1 pixel copy
+  // (no per-frame GPU scaling) and ctx.filter is never set on the main canvas context.
   function drawSpriteSheetFish(f) {
     const def = SPRITE_SPECIES[f.species];
     if (!def) return;
 
     const pbKey = f.visualParams && f.visualParams.prebakeKey;
-    // pbKey variants are pre-scaled+filtered directly; base uses ':ps' pre-scaled version.
+    // Variant canvases are pre-scaled+filtered; base uses ':ps' pre-scaled version.
     const sprite = (pbKey && SPRITES[pbKey]) || SPRITES[def.sheet + ':ps'] || SPRITES[def.sheet];
     if (!sprite) return;
 
-    const phase    = f.tailPhase;
+    const phase = f.tailPhase;
     const { tailRatio, facesLeft } = def;
-    // Pre-scaled sprite is already at target dimensions; no per-frame fraction math
     const targetW  = sprite.width;
     const targetH  = sprite.height;
     const tailW    = Math.round(targetW * tailRatio);
-    const OVERLAP  = Math.max(4, Math.round(targetH * 0.05));
+    const midW     = Math.round(targetW * 0.24);
+    const OVERLAP  = Math.max(4, Math.round(targetH * 0.06));
 
-    const gs      = f.growthScale || 1.0;
-    const scaleX  = (facesLeft ? -1 : 1) * (f.renderDir || 1) * gs;
-
-    const midAmp    = SPECIES_MID_AMP[f.species] || 0.07;
-    const bodyLean  = Math.sin(phase - Math.PI * 0.4) * midAmp * 0.5; // slight lead before tail
+    const midAmp   = SPECIES_MID_AMP[f.species] || 0.07;
+    const midAngle  = Math.sin(phase - Math.PI / 5) * midAmp;
     const tailAngle = Math.sin(phase) * 0.22;
+
+    const gs     = f.growthScale || 1.0;
+    const scaleX = (facesLeft ? -1 : 1) * (f.renderDir || 1) * gs;
 
     ctx.save();
     ctx.translate(f.x, f.y + Math.sin(phase * 0.7) * 1.5);
     if (!pbKey && f.visualParams && f.visualParams.colorFilter) { ctx.filter = f.visualParams.colorFilter; }
     ctx.scale(scaleX, gs);
-    ctx.rotate(Math.atan2(f.vy, Math.abs(f.vx) + 0.01) * 0.2 + bodyLean);
+    ctx.rotate(Math.atan2(f.vy, Math.abs(f.vx) + 0.01) * 0.2);
 
     if (facesLeft) {
-      // Head at LEFT (-targetW/2), tail at RIGHT
+      // Head at LEFT (-targetW/2), tail at RIGHT (+targetW/2)
       const pivotTail = targetW / 2 - tailW;
-      const bodyW     = targetW - tailW + OVERLAP;
+      const pivotMid  = targetW / 2 - tailW - midW;
 
-      // Body+head: 1:1 source-rect copy — no GPU scaling, no clip
-      ctx.drawImage(sprite, 0, 0, bodyW, targetH,
-        -targetW / 2, -targetH / 2, bodyW, targetH);
+      // 1. Head/body — rigid, no rotation
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(-targetW / 2, -targetH / 2 - 4, targetW - tailW - midW + OVERLAP, targetH + 8);
+      ctx.clip();
+      ctx.drawImage(sprite, 0, 0, targetW, targetH, -targetW / 2, -targetH / 2, targetW, targetH);
+      ctx.restore();
 
-      // Tail: wagging right end
+      // 2. Mid + tail — nested rotations create traveling S-wave
+      ctx.save();
+      ctx.translate(pivotMid, 0);
+      ctx.rotate(midAngle);
+      ctx.translate(-pivotMid, 0);
+
+      // 2a. Mid body (posterior wave)
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(pivotMid - OVERLAP, -targetH / 2 - 4, midW + 2 * OVERLAP, targetH + 8);
+      ctx.clip();
+      ctx.drawImage(sprite, 0, 0, targetW, targetH, -targetW / 2, -targetH / 2, targetW, targetH);
+      ctx.restore();
+
+      // 2b. Tail — nested in mid's rotated frame for seamless joint
       ctx.save();
       ctx.translate(pivotTail, 0);
       ctx.rotate(tailAngle);
@@ -1357,17 +1375,36 @@
       ctx.drawImage(sprite, 0, 0, targetW, targetH, -targetW / 2, -targetH / 2, targetW, targetH);
       ctx.restore();
 
+      ctx.restore(); // end mid rotation
+
     } else {
-      // Head at RIGHT (+targetW/2), tail at LEFT
+      // Head at RIGHT (+targetW/2), tail at LEFT (-targetW/2)
       const pivotTail = -targetW / 2 + tailW;
-      const bodyW     = targetW - tailW + OVERLAP;
+      const pivotMid  = -targetW / 2 + tailW + midW;
 
-      // Body+head: 1:1 source-rect copy of right portion — no GPU scaling, no clip
-      ctx.drawImage(sprite,
-        Math.max(0, tailW - OVERLAP), 0, bodyW, targetH,
-        pivotTail - OVERLAP, -targetH / 2, bodyW, targetH);
+      // 1. Head/body — rigid
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(pivotMid - OVERLAP, -targetH / 2 - 4, targetW - tailW - midW + OVERLAP, targetH + 8);
+      ctx.clip();
+      ctx.drawImage(sprite, 0, 0, targetW, targetH, -targetW / 2, -targetH / 2, targetW, targetH);
+      ctx.restore();
 
-      // Tail: wagging left end
+      // 2. Mid + tail — hierarchical
+      ctx.save();
+      ctx.translate(pivotMid, 0);
+      ctx.rotate(midAngle);
+      ctx.translate(-pivotMid, 0);
+
+      // 2a. Mid body
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(pivotTail - OVERLAP, -targetH / 2 - 4, midW + 2 * OVERLAP, targetH + 8);
+      ctx.clip();
+      ctx.drawImage(sprite, 0, 0, targetW, targetH, -targetW / 2, -targetH / 2, targetW, targetH);
+      ctx.restore();
+
+      // 2b. Tail — nested in mid's frame
       ctx.save();
       ctx.translate(pivotTail, 0);
       ctx.rotate(tailAngle);
@@ -1377,6 +1414,8 @@
       ctx.clip();
       ctx.drawImage(sprite, 0, 0, targetW, targetH, -targetW / 2, -targetH / 2, targetW, targetH);
       ctx.restore();
+
+      ctx.restore(); // end mid rotation
     }
 
     ctx.restore();
