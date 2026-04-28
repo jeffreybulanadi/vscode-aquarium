@@ -2,6 +2,15 @@
 
 All notable changes to VSCode Aquarium are documented in this file.
 
+## [1.5.2] - 2026-04-28
+
+### Fixed
+- Black screen and missing fish on fresh install: `window.FISH_ASSETS` in `aquarium.html` was out of sync with `extension.ts`
+  - Removed 6 stale goldfish species entries (Giant Gourami, Black Moor, Lionhead, Shubunkin, Calico Oranda, Red Cap Oranda) that had unreplaced `{{...}}` URI placeholders
+  - Added 6 missing species that were in `extension.ts` but absent from `FISH_ASSETS`: Tilapia, Indonesian Tiger, Electric Blue Ram, Diamond Stingray, Cherry Barb, Angelfish
+- Spawn panel now shows the correct 16 current species; removed the 6 stale goldfish rows that pointed to non-existent species
+- `loadSprites()` now filters out any unreplaced template placeholders (`{{...}}`) as a defensive guard, preventing this class of bug from recurring if `aquarium.html` and `extension.ts` drift out of sync again
+
 ## [1.5.0] - 2026-04-28
 
 ### Added
