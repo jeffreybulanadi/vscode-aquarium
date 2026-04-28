@@ -308,6 +308,11 @@
   const SCHOOLING_SPECIES = new Set(['cherrybarb', 'silverdollar']);
   // Territorial cichlids — slowly patrol a home zone rather than wandering freely.
   const TERRITORIAL_SPECIES = new Set(['oscar', 'flowerhorn', 'peacockbass', 'electricblueram']);
+  // Predator/prey for mock-chase behavior (purely cosmetic — prey never gets eaten).
+  const PREDATOR_SPECIES = new Set(['arowana', 'alligatorgar', 'snakehead', 'indonesiantiger']);
+  const PREY_SPECIES     = new Set(['cherrybarb', 'electricblueram']);
+  const CHASE_RADIUS = 280; // px — predator notices prey within this range
+  const FLEE_RADIUS  = 220; // px — prey detects and flees from predator
 
   const FOOD_PREFERENCE = {
     arowana:      ['cricket', 'shrimp'],
@@ -643,6 +648,88 @@
           f.breachTimer -= dt;
           desiredVy = f.breachTimer > 1.1 ? -85 : 22;
           if (f.breachTimer <= 0) f.breaching = false;
+        }
+      }
+
+      // ---- Arowana horizontal burst ----
+      // Quick speed dash (~every 30-50s) — separate from breach; mimics striking at prey.
+      // Disabled during breach and when actively chasing prey.
+      if (f.species === 'arowana' && !f.target && !f.breaching && !f.chaseTarget) {
+        if (f.burstTimer === undefined) f.burstTimer = 0;
+        f.burstTimer -= dt;
+        if (!f.bursting && f.burstTimer <= 0 && Math.random() < dt * 0.025) {
+          f.bursting = true; f.burstRemain = 0.55;
+          f.burstTimer = 25 + Math.random() * 20;
+        }
+        if (f.bursting) {
+          f.burstRemain -= dt;
+          desiredVx *= 3.2;
+          if (f.burstRemain <= 0) f.bursting = false;
+        }
+      }
+
+      // ---- Predator chase (arowana, alligatorgar, snakehead, indonesiantiger) ----
+      // Occasionally locks onto a small prey fish and charges toward it.
+      // Purely cosmetic — predator never actually eats the prey fish.
+      if (PREDATOR_SPECIES.has(f.species) && !f.target) {
+        if (f.chaseCooldown === undefined) f.chaseCooldown = 10 + Math.random() * 15;
+        f.chaseCooldown -= dt;
+        // Validate existing chase target (clear if prey died, removed, or duration expired)
+        if (f.chaseTarget && (f.chaseTarget.dead || !fish.includes(f.chaseTarget) || f.chaseDuration <= 0)) {
+          f.chaseTarget = null;
+          f.chaseCooldown = 18 + Math.random() * 20;
+        }
+        // Acquire a new prey target when cooldown expires
+        if (!f.chaseTarget && f.chaseCooldown <= 0) {
+          let nearest = null, nearestD2 = CHASE_RADIUS * CHASE_RADIUS;
+          for (const o of fish) {
+            if (!PREY_SPECIES.has(o.species) || o.dead) continue;
+            const d2 = (o.x - f.x) ** 2 + (o.y - f.y) ** 2;
+            if (d2 < nearestD2) { nearestD2 = d2; nearest = o; }
+          }
+          if (nearest) {
+            f.chaseTarget   = nearest;
+            f.chaseDuration = 3.5 + Math.random() * 2;
+            f.chaseCooldown = 22 + Math.random() * 20;
+          } else {
+            f.chaseCooldown = 8 + Math.random() * 8; // no prey in tank, retry soon
+          }
+        }
+        // Steer toward prey at 1.8× normal speed
+        if (f.chaseTarget) {
+          f.chaseDuration -= dt;
+          const dx = f.chaseTarget.x - f.x, dy = f.chaseTarget.y - f.y;
+          const d  = Math.hypot(dx, dy) || 1;
+          if (d > CHASE_RADIUS * 1.4) {
+            // Prey escaped — give up
+            f.chaseTarget = null; f.chaseCooldown = 15 + Math.random() * 15;
+          } else {
+            const spd = (SPECIES_SPEED[f.species] || 40) * 1.8;
+            desiredVx = (dx / d) * spd;
+            desiredVy = (dy / d) * spd;
+          }
+        }
+      }
+
+      // ---- Prey flee (cherrybarb, electricblueram) ----
+      // Per-frame: each fish independently finds its nearest predator and bolts away.
+      // No persistent state — immune to stale references.
+      // Schools naturally scatter since each member reacts to the same predator differently.
+      if (PREY_SPECIES.has(f.species) && !f.target) {
+        let pdx = 0, pdy = 0, minPredD = Infinity;
+        for (const o of fish) {
+          if (!PREDATOR_SPECIES.has(o.species) || o.dead) continue;
+          const dx = f.x - o.x, dy = f.y - o.y;
+          const d  = Math.hypot(dx, dy) || 1;
+          if (d < minPredD) { minPredD = d; pdx = dx; pdy = dy; }
+        }
+        if (minPredD < FLEE_RADIUS) {
+          const panicMult = minPredD < 80 ? 3.8 : 2.4; // burst when predator very close
+          const spd = (SPECIES_SPEED[f.species] || 38) * panicMult;
+          const fd  = Math.hypot(pdx, pdy) || 1;
+          desiredVx = (pdx / fd) * spd;
+          desiredVy = (pdy / fd) * spd;
+          f.tailPhase += dt * 4; // faster tail beat conveys panic
         }
       }
 
