@@ -123,8 +123,8 @@
   // function removeColorBackground(img, tolerance) { ... }
 
   // Pre-bake every non-trivial color variant into its own offscreen canvas.
-  // Eliminates ctx.filter on the main canvas context (major GPU compositing cost).
-  // Also creates a ':ps' pre-scaled version at target render size for 1:1 GPU draw.
+  // Bakes directly at the target render size — no full-size intermediate needed.
+  // Eliminates ctx.filter on the main canvas context and per-frame GPU scaling.
   function prebakeVariants() {
     for (const [species, variants] of Object.entries(SPECIES_COLOR_VARIANTS)) {
       const def = SPRITE_SPECIES[species];
@@ -137,18 +137,19 @@
         if (!variant.filter) continue;
         const key = def.sheet + ':' + variant.id;
         if (SPRITES[key]) continue;
-        const oc = document.createElement('canvas');
-        oc.width = baseSprite.width;
-        oc.height = baseSprite.height;
-        const oc2 = oc.getContext('2d');
-        oc2.filter = variant.filter;
-        oc2.drawImage(baseSprite, 0, 0);
-        SPRITES[key] = oc;
-        // Pre-scale filtered variant to target render size
+        // Bake filtered + pre-scaled in one pass — halves GPU canvas count vs two-step.
         const ps = document.createElement('canvas');
         ps.width = tw; ps.height = th;
-        ps.getContext('2d').drawImage(oc, 0, 0, tw, th);
-        SPRITES[key + ':ps'] = ps;
+        const pctx = ps.getContext('2d');
+        pctx.filter = variant.filter;
+        pctx.drawImage(baseSprite, 0, 0, tw, th);
+        SPRITES[key] = ps;
+      }
+    }
+    // Free full-resolution base sprites — only pre-scaled ':ps' versions are needed at draw time.
+    for (const def of Object.values(SPRITE_SPECIES)) {
+      if (SPRITES[def.sheet] && SPRITES[def.sheet + ':ps']) {
+        SPRITES[def.sheet] = null;
       }
     }
   }
@@ -340,7 +341,6 @@
     canvas.height = Math.floor(H * DPR);
     ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
     ctx.imageSmoothingEnabled = true;
-    ctx.imageSmoothingQuality = 'high';
     bgCanvas = null;  // invalidate baked background on resize
     seedPlants();
     fish.forEach(clampFish);
@@ -1310,13 +1310,11 @@
   function drawSpriteSheetFish(f) {
     const def = SPRITE_SPECIES[f.species];
     if (!def) return;
-    const baseSprite = SPRITES[def.sheet];
-    if (!baseSprite) return;
 
     const pbKey = f.visualParams && f.visualParams.prebakeKey;
-    // Prefer pre-scaled sprite; fall back to full-size variant then full-size base
-    const scaledKey = (pbKey || def.sheet) + ':ps';
-    const sprite = SPRITES[scaledKey] || SPRITES[pbKey] || baseSprite;
+    // pbKey variants are pre-scaled+filtered directly; base uses ':ps' pre-scaled version.
+    const sprite = (pbKey && SPRITES[pbKey]) || SPRITES[def.sheet + ':ps'] || SPRITES[def.sheet];
+    if (!sprite) return;
 
     const phase    = f.tailPhase;
     const { tailRatio, facesLeft } = def;
@@ -1396,14 +1394,14 @@
       ctx.translate(f.x, f.y);
       ctx.scale(1, -1);
       ctx.translate(-f.x, -f.y);
-      if (def && SPRITES[def.sheet]) drawSpriteSheetFish(f);
+      if (def && (SPRITES[def.sheet + ':ps'] || SPRITES[def.sheet])) drawSpriteSheetFish(f);
       else if (f.species === 'arowana') drawArowanaCanvas(f);
       else drawGeneric(f);
       ctx.restore();
       return;
     }
 
-    if (def && SPRITES[def.sheet]) { drawSpriteSheetFish(f); return; }
+    if (def && (SPRITES[def.sheet + ':ps'] || SPRITES[def.sheet])) { drawSpriteSheetFish(f); return; }
     if (f.species === 'arowana') drawArowanaCanvas(f);
     else if (f.species === 'oscar') drawOscar(f);
     else drawGeneric(f);
