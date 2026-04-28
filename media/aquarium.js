@@ -54,12 +54,12 @@
   // ---------- Sprite loading ----------
   const SPRITES = {};
 
-  function removeWhiteBackground(img) {
+  function removeWhiteBackground(src) {
     const oc = document.createElement('canvas');
-    oc.width = img.naturalWidth;
-    oc.height = img.naturalHeight;
+    oc.width  = src.naturalWidth  || src.width;
+    oc.height = src.naturalHeight || src.height;
     const oc2 = oc.getContext('2d');
-    oc2.drawImage(img, 0, 0);
+    oc2.drawImage(src, 0, 0);
     const id = oc2.getImageData(0, 0, oc.width, oc.height);
     const d = id.data;
     const IW = oc.width, IH = oc.height;
@@ -149,6 +149,11 @@
     }
   }
 
+  // Max source height before removeWhiteBackground.
+  // Largest fish renders at 160px; 512 = 3.2× headroom for any zoom.
+  // Cuts pixel-processing from ~4.2M → ~450K for oversized source images.
+  const MAX_SPRITE_H = 512;
+
   function loadSprites() {
     const assets = window.FISH_ASSETS || {};
     const keys = Object.keys(assets);
@@ -156,7 +161,19 @@
     return Promise.all(keys.map(key => new Promise(resolve => {
       const img = new Image();
       img.onload = () => {
-        SPRITES[key] = removeWhiteBackground(img);
+        let source = img;
+        if (img.naturalHeight > MAX_SPRITE_H) {
+          const scale = MAX_SPRITE_H / img.naturalHeight;
+          const cw = Math.round(img.naturalWidth * scale);
+          const tmp = document.createElement('canvas');
+          tmp.width = cw; tmp.height = MAX_SPRITE_H;
+          const tctx = tmp.getContext('2d');
+          tctx.imageSmoothingEnabled = true;
+          tctx.imageSmoothingQuality = 'high';
+          tctx.drawImage(img, 0, 0, cw, MAX_SPRITE_H);
+          source = tmp;
+        }
+        SPRITES[key] = removeWhiteBackground(source);
         resolve();
       };
       img.onerror = resolve;
@@ -1533,15 +1550,27 @@
     }
   });
 
+  const MAX_FISH = 10;
+
   spawnPanel.querySelectorAll('.spawn-variants button').forEach(btn => {
     btn.addEventListener('click', () => {
+      if (fish.length >= MAX_FISH) {
+        spawnPanel.classList.add('hidden');
+        // Flash the label to signal the tank is full
+        label.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> Tank full (${MAX_FISH}/${MAX_FISH})`;
+        setTimeout(() => {
+          const typeText = aquariumType === 'saltwater' ? 'Saltwater' : 'Freshwater';
+          label.innerHTML = `<i class="fa-solid fa-fish"></i> ${typeText} · ${fish.length} fish`;
+        }, 2500);
+        return;
+      }
       const species = btn.dataset.species;
       const variant = btn.dataset.variant;
       const f = makeFish(species, variant);
       fish.push(f);
       clampFish(f);
       const typeText = aquariumType === 'saltwater' ? 'Saltwater' : 'Freshwater';
-      label.innerHTML = `<i class="fa-solid fa-fish"></i> ${typeText} · ${fish.length} fish`;
+      label.innerHTML = `<i class="fa-solid fa-fish"></i> ${typeText} · ${fish.length}${fish.length >= MAX_FISH ? `/${MAX_FISH} 🔴` : ''} fish`;
       vscode.postMessage({ type: 'spawnFish', species, colorVariant: variant });
       spawnPanel.classList.add('hidden');
     });
