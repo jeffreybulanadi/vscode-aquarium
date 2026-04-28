@@ -161,25 +161,18 @@
   // fx/fy/fw/fh are fractions of the source sprite canvas (0-1)
   // facesLeft: head is at LEFT of image (need scale(-dir,1)); else head at RIGHT
   const SPRITE_SPECIES = {
-    arowana:      { sheet: 'arowana',      fx: 0,    fy: 0, fw: 1,    fh: 1, targetH: 160, facesLeft: true,  tailRatio: 0.22 },
-    oscar:        { sheet: 'oscar',        fx: 0,    fy: 0, fw: 1,    fh: 1, targetH: 76,  facesLeft: false, tailRatio: 0.20 },
-    snakehead:    { sheet: 'snakehead',    fx: 0,    fy: 0, fw: 1,    fh: 1, targetH: 68,  facesLeft: false, tailRatio: 0.22 },
-    alligatorgar: { sheet: 'ag',           fx: 0,    fy: 0, fw: 1,    fh: 1, targetH: 160, facesLeft: false, tailRatio: 0.22 },
-    rtcatfish:    { sheet: 'rtc',          fx: 0,    fy: 0, fw: 1,    fh: 1, targetH: 124, facesLeft: false, tailRatio: 0.25 },
-    pleco:        { sheet: 'pleco',        fx: 0,    fy: 0, fw: 1,    fh: 1, targetH: 62,  facesLeft: false, tailRatio: 0.20 },
-    flowerhorn:   { sheet: 'flowerhorn',   fx: 0,    fy: 0, fw: 1,    fh: 1, targetH: 88,  facesLeft: true,  tailRatio: 0.22 },
-    peacockbass:  { sheet: 'peacockbass',  fx: 0,    fy: 0, fw: 1,    fh: 1, targetH: 82,  facesLeft: true,  tailRatio: 0.22 },
-    knifefish:    { sheet: 'knifefish',    fx: 0,    fy: 0, fw: 1,    fh: 1, targetH: 84,  facesLeft: false, tailRatio: 0.28 },
-    silverdollar: { sheet: 'silverdollar', fx: 0,    fy: 0, fw: 1,    fh: 1, targetH: 72,  facesLeft: false, tailRatio: 0.20 },
-    giantgourami: { sheet: 'giantgourami', fx: 0,    fy: 0, fw: 1,    fh: 1, targetH: 88,  facesLeft: true,  tailRatio: 0.25 },
-    blackmoor:    { sheet: 'blackmoor',    fx: 0,    fy: 0, fw: 1,    fh: 1, targetH: 44,  facesLeft: true,  tailRatio: 0.25 },
-    lionhead:     { sheet: 'lionhead',     fx: 0,    fy: 0, fw: 1,    fh: 1, targetH: 46,  facesLeft: false, tailRatio: 0.28 },
-    shubunkin:    { sheet: 'shubukin',     fx: 0,    fy: 0, fw: 1,    fh: 1, targetH: 42,  facesLeft: false, tailRatio: 0.30 },
-    calico:       { sheet: 'calico',       fx: 0,    fy: 0, fw: 1,    fh: 1, targetH: 48,  facesLeft: true,  tailRatio: 0.22 },
-    redcap:       { sheet: 'redcap',       fx: 0,    fy: 0, fw: 1,    fh: 1, targetH: 44,  facesLeft: false, tailRatio: 0.26 },
+    arowana:      { sheet: 'arowana',      fx: 0, fy: 0, fw: 1, fh: 1, targetH: 160, facesLeft: true,  tailRatio: 0.22 },
+    oscar:        { sheet: 'oscar',        fx: 0, fy: 0, fw: 1, fh: 1, targetH: 76,  facesLeft: false, tailRatio: 0.20 },
+    snakehead:    { sheet: 'snakehead',    fx: 0, fy: 0, fw: 1, fh: 1, targetH: 68,  facesLeft: false, tailRatio: 0.22 },
+    alligatorgar: { sheet: 'ag',           fx: 0, fy: 0, fw: 1, fh: 1, targetH: 160, facesLeft: false, tailRatio: 0.22 },
+    rtcatfish:    { sheet: 'rtc',          fx: 0, fy: 0, fw: 1, fh: 1, targetH: 124, facesLeft: false, tailRatio: 0.25 },
+    pleco:        { sheet: 'pleco',        fx: 0, fy: 0, fw: 1, fh: 1, targetH: 62,  facesLeft: false, tailRatio: 0.20 },
+    flowerhorn:   { sheet: 'flowerhorn',   fx: 0, fy: 0, fw: 1, fh: 1, targetH: 88,  facesLeft: true,  tailRatio: 0.22 },
+    peacockbass:  { sheet: 'peacockbass',  fx: 0, fy: 0, fw: 1, fh: 1, targetH: 82,  facesLeft: true,  tailRatio: 0.22 },
+    knifefish:    { sheet: 'knifefish',    fx: 0, fy: 0, fw: 1, fh: 1, targetH: 84,  facesLeft: false, tailRatio: 0.28 },
+    silverdollar: { sheet: 'silverdollar', fx: 0, fy: 0, fw: 1, fh: 1, targetH: 72,  facesLeft: false, tailRatio: 0.20 },
   };
 
-  // Color variants per species — CSS filter strings
   const SPECIES_COLOR_VARIANTS = {
     arowana:      [{ id: 'silver',    filter: '' },
                    { id: 'golden',    filter: 'sepia(0.8) saturate(2.2) hue-rotate(18deg) brightness(1.1)' },
@@ -212,27 +205,8 @@
     silverdollar: [{ id: 'silver',    filter: '' },
                    { id: 'spotted',   filter: 'contrast(1.3) brightness(0.92)' },
                    { id: 'red_hook',  filter: 'hue-rotate(-15deg) saturate(1.6) brightness(1.0)' }],
-    giantgourami: [{ id: 'natural',   filter: '' },
-                   { id: 'honey',     filter: 'sepia(0.28) saturate(1.4) hue-rotate(5deg) brightness(1.18)' },
-                   { id: 'albino',    filter: 'sepia(0.08) brightness(1.5) saturate(0.22)' }],
-    blackmoor:    [{ id: 'natural',   filter: '' },
-                   { id: 'telescope', filter: 'brightness(0.80) contrast(1.2)' },
-                   { id: 'velvet',    filter: 'hue-rotate(200deg) saturate(1.3) brightness(0.70)' }],
-    lionhead:     [{ id: 'red_white', filter: '' },
-                   { id: 'orange',    filter: 'hue-rotate(10deg) saturate(1.5) brightness(1.05)' },
-                   { id: 'calico',    filter: 'hue-rotate(-15deg) saturate(1.8) contrast(1.1)' }],
-    shubunkin:    [{ id: 'natural',   filter: '' },
-                   { id: 'blue',      filter: 'hue-rotate(160deg) saturate(1.4) brightness(0.95)' },
-                   { id: 'orange',    filter: 'hue-rotate(20deg) saturate(2.0) brightness(1.05)' }],
-    calico:       [{ id: 'natural',   filter: '' },
-                   { id: 'orange_black', filter: 'hue-rotate(10deg) saturate(1.6) contrast(1.15)' },
-                   { id: 'red_white', filter: 'sepia(0.2) saturate(1.8) brightness(1.1)' }],
-    redcap:       [{ id: 'natural',   filter: '' },
-                   { id: 'orange_cap',filter: 'hue-rotate(12deg) saturate(1.6) brightness(1.05)' },
-                   { id: 'black_cap', filter: 'hue-rotate(180deg) saturate(0.5) brightness(0.80)' }],
   };
 
-  // Y zone fractions (fraction of canvas height) — controls vertical swim territory
   const SPECIES_ZONE = {
     alligatorgar: { yMin: 0.08, yMax: 0.55 },
     arowana:      { yMin: 0.22, yMax: 0.34 },
@@ -244,42 +218,28 @@
     peacockbass:  { yMin: 0.15, yMax: 0.65 },
     knifefish:    { yMin: 0.35, yMax: 0.82 },
     silverdollar: { yMin: 0.20, yMax: 0.70 },
-    giantgourami: { yMin: 0.25, yMax: 0.75 },
-    blackmoor:    { yMin: 0.20, yMax: 0.78 },
-    lionhead:     { yMin: 0.20, yMax: 0.78 },
-    shubunkin:    { yMin: 0.15, yMax: 0.72 },
-    calico:       { yMin: 0.20, yMax: 0.78 },
-    redcap:       { yMin: 0.20, yMax: 0.78 },
   };
 
-  // Base swim speeds (px/s) — differentiated per species behavior
   const SPECIES_SPEED = {
     arowana: 65, snakehead: 42,
     alligatorgar: 28, oscar: 22, flowerhorn: 18,
-    peacockbass: 35, knifefish: 28, silverdollar: 30, giantgourami: 12,
+    peacockbass: 35, knifefish: 28, silverdollar: 30,
     rtcatfish: 14, pleco: 6,
-    blackmoor: 12, lionhead: 15, shubunkin: 22, calico: 14, redcap: 17,
   };
 
-  // Mid-body undulation amplitude (radians) — higher = more flexible body wave
   const SPECIES_MID_AMP = {
     arowana: 0.09, snakehead: 0.10,
     alligatorgar: 0.04, oscar: 0.07, flowerhorn: 0.07,
-    peacockbass: 0.08, knifefish: 0.12, silverdollar: 0.06, giantgourami: 0.05,
+    peacockbass: 0.08, knifefish: 0.12, silverdollar: 0.06,
     rtcatfish: 0.08, pleco: 0.03,
-    blackmoor: 0.04, lionhead: 0.04, shubunkin: 0.06, calico: 0.04, redcap: 0.05,
   };
 
-  // Hunger decay rate (units/sec). Fish hunger 0→100 over time;
-  // rates set so fish survive ~2-3 hrs without feeding before dying.
   const HUNGER_DECAY = {
     arowana: 0.010, oscar: 0.013, snakehead: 0.011,
     alligatorgar: 0.008, rtcatfish: 0.010, pleco: 0.006, flowerhorn: 0.013,
-    peacockbass: 0.012, knifefish: 0.009, silverdollar: 0.010, giantgourami: 0.008,
-    blackmoor: 0.009, lionhead: 0.010, shubunkin: 0.010, calico: 0.009, redcap: 0.010,
+    peacockbass: 0.012, knifefish: 0.009, silverdollar: 0.010,
   };
 
-  // Preferred food per species — correct food earns +15 coins & more satiety
   const FOOD_PREFERENCE = {
     arowana:      ['cricket', 'shrimp'],
     oscar:        ['cricket', 'superworm'],
@@ -291,23 +251,13 @@
     peacockbass:  ['shrimp', 'cricket'],
     knifefish:    ['shrimp', 'superworm'],
     silverdollar: ['pellet', 'cricket'],
-    giantgourami: ['pellet', 'superworm'],
-    blackmoor:    ['pellet', 'shrimp'],
-    lionhead:     ['pellet', 'shrimp'],
-    shubunkin:    ['pellet', 'cricket'],
-    calico:       ['pellet', 'shrimp'],
-    redcap:       ['pellet', 'shrimp'],
   };
 
-  // Friendly species names (shown in tooltip)
   const SPECIES_LABEL = {
     arowana: 'Arowana', oscar: 'Oscar Cichlid', snakehead: 'Snakehead',
     alligatorgar: 'Alligator Gar',
     rtcatfish: 'Red-Tailed Catfish', pleco: 'Pleco', flowerhorn: 'Flowerhorn',
-    peacockbass: 'Peacock Bass', knifefish: 'Knifefish',
-    silverdollar: 'Silver Dollar', giantgourami: 'Giant Gourami',
-    blackmoor: 'Black Moor', lionhead: 'Lionhead', shubunkin: 'Shubunkin',
-    calico: 'Calico Oranda', redcap: 'Red Cap Oranda',
+    peacockbass: 'Peacock Bass', knifefish: 'Knifefish', silverdollar: 'Silver Dollar',
   };
 
   // ---------- Resize ----------
@@ -427,8 +377,14 @@
   }
 
   function rebuildFish(list) {
-    fish = list
-      .filter(entry => entry.species === 'arowana' || !!SPRITE_SPECIES[entry.species])
+    // Filter out removed/unknown species so stale settings don't cause blank fish
+    const valid = list.filter(entry => !!SPRITE_SPECIES[entry.species]);
+    const defaults = [
+      { species: 'arowana', colorVariant: 'silver' },
+      { species: 'oscar',   colorVariant: 'tiger'  },
+      { species: 'oscar',   colorVariant: 'albino' },
+    ];
+    fish = (valid.length > 0 ? valid : defaults)
       .map(entry => makeFish(entry.species, entry.colorVariant));
     fish.forEach(clampFish);
     const typeText = aquariumType === 'saltwater' ? 'Saltwater' : 'Freshwater';
@@ -1320,13 +1276,12 @@
       const pivotTail = targetW / 2 - tailW;
       const pivotMid  = targetW / 2 - tailW - midW;
 
-      // 1. Front body / head — no rotation
-      ctx.save();
-      ctx.beginPath();
-      ctx.rect(-targetW / 2, -targetH / 2 - 4, targetW - tailW - midW + OVERLAP, targetH + 8);
-      ctx.clip();
-      ctx.drawImage(sprite, sx, sy, sw, sh, -targetW / 2, -targetH / 2, targetW, targetH);
-      ctx.restore();
+      // 1. Front body / head — source-rect drawImage instead of clip (one less clip per fish per frame)
+      {
+        const headDestW = targetW - tailW - midW + OVERLAP;
+        ctx.drawImage(sprite, sx, sy, headDestW / targetW * sw, sh,
+          -targetW / 2, -targetH / 2, headDestW, targetH);
+      }
 
       // 2. Mid + Tail — mid rotation applied first; tail nested within it for seamless joint
       ctx.save();
@@ -1360,13 +1315,14 @@
       const pivotTail = -targetW / 2 + tailW;
       const pivotMid  = -targetW / 2 + tailW + midW;
 
-      // 1. Front body / head — no rotation
-      ctx.save();
-      ctx.beginPath();
-      ctx.rect(pivotMid - OVERLAP, -targetH / 2 - 4, targetW - tailW - midW + OVERLAP, targetH + 8);
-      ctx.clip();
-      ctx.drawImage(sprite, sx, sy, sw, sh, -targetW / 2, -targetH / 2, targetW, targetH);
-      ctx.restore();
+      // 1. Front body / head — source-rect drawImage instead of clip (one less clip per fish per frame)
+      {
+        const headDestX = pivotMid - OVERLAP;
+        const headDestW = targetW - tailW - midW + OVERLAP;
+        ctx.drawImage(sprite,
+          sx + (tailW + midW - OVERLAP) / targetW * sw, sy, headDestW / targetW * sw, sh,
+          headDestX, -targetH / 2, headDestW, targetH);
+      }
 
       // 2. Mid + Tail — hierarchical
       ctx.save();
@@ -1423,22 +1379,26 @@
     else drawGeneric(f);
   }
 
-  // Soft elliptical shadow under each fish — depth cue
-  function drawFishShadow(f) {
-    const def = SPRITE_SPECIES[f.species];
-    const fishH = def ? def.targetH * SPRITE_SCALE : 50;
-    const fishW = fishH * 2.2;
+  // Soft elliptical shadow under each fish — all fish drawn in one save/restore block
+  function drawAllShadows() {
+    if (fish.length === 0) return;
     const floorY = H - 28;
-    const dist = floorY - f.y;
-    if (dist > H * 0.65) return;  // too far up — shadow invisible
-    const alpha = Math.max(0, 0.22 - dist / (H * 0.65) * 0.22);
-    const scaleX = Math.max(0.3, 1 - dist / (H * 0.55));
     ctx.save();
-    ctx.globalAlpha = alpha;
     ctx.fillStyle = '#000';
-    ctx.beginPath();
-    ctx.ellipse(f.x, floorY - 2, fishW * 0.42 * scaleX, 5, 0, 0, Math.PI * 2);
-    ctx.fill();
+    for (const f of fish) {
+      const def = SPRITE_SPECIES[f.species];
+      const fishH = def ? def.targetH * SPRITE_SCALE : 50;
+      const fishW = fishH * 2.2;
+      const dist = floorY - f.y;
+      if (dist > H * 0.65) continue;
+      const alpha = Math.max(0, 0.22 - dist / (H * 0.65) * 0.22);
+      if (alpha <= 0) continue;
+      const scaleX = Math.max(0.3, 1 - dist / (H * 0.55));
+      ctx.globalAlpha = alpha;
+      ctx.beginPath();
+      ctx.ellipse(f.x, floorY - 2, fishW * 0.42 * scaleX, 5, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
     ctx.restore();
   }
 
@@ -1455,7 +1415,7 @@
     drawWaste();
     drawBubbles();
     drawFood();
-    for (const f of fish) drawFishShadow(f);
+    drawAllShadows();
     for (const f of fish) drawFish(f);
     drawHungerIndicators(t);
     drawDayNight();
@@ -1463,16 +1423,18 @@
     drawTooltip();
   }
 
-  // Target 30fps — imperceptible for slow-swimming fish, halves GPU fill-rate cost.
+  // Frame-rate cap — adaptive: fewer fish = smoother; more fish = lower fps to keep CPU down.
+  // 30fps for <=5 fish, 24fps for 6-9 fish, 20fps for 10+ fish.
   const FRAME_MS = 1000 / 30;
   let lastRender = 0;
 
   function loop(now) {
     requestAnimationFrame(loop);
     if (document.hidden) return;              // pause when panel is not visible
+    const targetMs = fish.length >= 10 ? 50 : fish.length >= 6 ? 1000 / 24 : FRAME_MS;
     const elapsed = now - lastRender;
-    if (elapsed < FRAME_MS) return;           // frame-rate cap
-    lastRender = now - (elapsed % FRAME_MS);  // keep timing stable
+    if (elapsed < targetMs) return;           // adaptive frame-rate cap
+    lastRender = now - (elapsed % targetMs);  // keep timing stable
     const dt = Math.min(0.05, (now - lastTime) / 1000);
     lastTime = now;
     update(dt);
@@ -1483,7 +1445,10 @@
   function dropFood(x, y, type) {
     const foodType = type || currentFood || 'pellet';
     const count = foodType === 'superworm' ? 3 : foodType === 'cricket' ? 4 : 6;
-    for (let i = 0; i < count; i++) {
+    // Cap total pellets to keep O(fish x pellets) cost bounded
+    const MAX_PELLETS = 18;
+    const toAdd = Math.min(count, Math.max(0, MAX_PELLETS - pellets.length));
+    for (let i = 0; i < toAdd; i++) {
       pellets.push({
         x: x + (Math.random() - 0.5) * 50,
         y: y + (Math.random() - 0.5) * 10,
