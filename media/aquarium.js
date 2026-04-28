@@ -155,7 +155,12 @@
   const MAX_SPRITE_H = 512;
 
   function loadSprites() {
-    const assets = window.FISH_ASSETS || {};
+    const raw = window.FISH_ASSETS || {};
+    // Drop any unreplaced template placeholders (e.g. '{{speciesUri}}') so a
+    // stale aquarium.html can never silently break sprite loading.
+    const assets = Object.fromEntries(
+      Object.entries(raw).filter(([, v]) => typeof v === 'string' && !v.startsWith('{{'))
+    );
     const keys = Object.keys(assets);
     if (keys.length === 0) { return Promise.resolve(); }
     return Promise.all(keys.map(key => new Promise(resolve => {
