@@ -124,12 +124,15 @@
 
   // Pre-bake every non-trivial color variant into its own offscreen canvas.
   // Eliminates ctx.filter on the main canvas context (major GPU compositing cost).
+  // Also creates a ':ps' pre-scaled version at target render size for 1:1 GPU draw.
   function prebakeVariants() {
     for (const [species, variants] of Object.entries(SPECIES_COLOR_VARIANTS)) {
       const def = SPRITE_SPECIES[species];
       if (!def) continue;
       const baseSprite = SPRITES[def.sheet];
       if (!baseSprite) continue;
+      const th = Math.round(def.targetH * SPRITE_SCALE);
+      const tw = Math.round(th * baseSprite.width / baseSprite.height);
       for (const variant of variants) {
         if (!variant.filter) continue;
         const key = def.sheet + ':' + variant.id;
@@ -141,6 +144,11 @@
         oc2.filter = variant.filter;
         oc2.drawImage(baseSprite, 0, 0);
         SPRITES[key] = oc;
+        // Pre-scale filtered variant to target render size
+        const ps = document.createElement('canvas');
+        ps.width = tw; ps.height = th;
+        ps.getContext('2d').drawImage(oc, 0, 0, tw, th);
+        SPRITES[key + ':ps'] = ps;
       }
     }
   }
@@ -151,7 +159,21 @@
     if (keys.length === 0) { return Promise.resolve(); }
     return Promise.all(keys.map(key => new Promise(resolve => {
       const img = new Image();
-      img.onload = () => { SPRITES[key] = removeWhiteBackground(img); resolve(); };
+      img.onload = () => {
+        const raw = removeWhiteBackground(img);
+        SPRITES[key] = raw;
+        // Pre-scale to target render size so drawImage is a 1:1 pixel copy every frame.
+        const def = Object.values(SPRITE_SPECIES).find(d => d.sheet === key);
+        if (def) {
+          const th = Math.round(def.targetH * SPRITE_SCALE);
+          const tw = Math.round(th * raw.width / raw.height);
+          const ps = document.createElement('canvas');
+          ps.width = tw; ps.height = th;
+          ps.getContext('2d').drawImage(raw, 0, 0, tw, th);
+          SPRITES[key + ':ps'] = ps;
+        }
+        resolve();
+      };
       img.onerror = resolve;
       img.src = assets[key];
     })));
@@ -1280,9 +1302,11 @@
   }
 
   // ===================== GENERIC SPRITE FISH =====================
-  // Single-pass rendering: whole sprite drawn once with gentle whole-body sway.
-  // Eliminates 2 ctx.clip() + 2 extra drawImage calls per fish per frame vs the
-  // old 3-section approach, cutting per-fish render cost by ~70%.
+  // 2-section rendering: body+head (1:1 draw from pre-scaled canvas, no clip) +
+  // tail (clip + rotate from pre-scaled canvas). Outer transform adds subtle body lean.
+  // vs old 3-section: saves 1 clip + 1 drawImage per fish per frame.
+  // vs 1-slice: restores proper tail-wag animation.
+  // Pre-scaled sprites mean every drawImage is a 1:1 pixel copy — no GPU scaling.
   function drawSpriteSheetFish(f) {
     const def = SPRITE_SPECIES[f.species];
     if (!def) return;
@@ -1290,28 +1314,73 @@
     if (!baseSprite) return;
 
     const pbKey = f.visualParams && f.visualParams.prebakeKey;
-    const sprite = (pbKey && SPRITES[pbKey]) || baseSprite;
+    // Prefer pre-scaled sprite; fall back to full-size variant then full-size base
+    const scaledKey = (pbKey || def.sheet) + ':ps';
+    const sprite = SPRITES[scaledKey] || SPRITES[pbKey] || baseSprite;
 
-    const phase = f.tailPhase;
-    const { facesLeft } = def;
-    const targetH = def.targetH * SPRITE_SCALE;
+    const phase    = f.tailPhase;
+    const { tailRatio, facesLeft } = def;
+    // Pre-scaled sprite is already at target dimensions; no per-frame fraction math
+    const targetW  = sprite.width;
+    const targetH  = sprite.height;
+    const tailW    = Math.round(targetW * tailRatio);
+    const OVERLAP  = Math.max(4, Math.round(targetH * 0.05));
 
-    const sx = def.fx * sprite.width,  sy = def.fy * sprite.height;
-    const sw = def.fw * sprite.width,  sh = def.fh * sprite.height;
-    const targetW = targetH * (sw / sh);
+    const gs      = f.growthScale || 1.0;
+    const scaleX  = (facesLeft ? -1 : 1) * (f.renderDir || 1) * gs;
 
-    const gs = f.growthScale || 1.0;
-    const scaleX = (facesLeft ? -1 : 1) * (f.renderDir || 1) * gs;
-
-    // Amplitude from per-species mid-body flexibility table; *0.75 converts to sway radians.
-    const swayAngle = Math.sin(phase) * (SPECIES_MID_AMP[f.species] || 0.07) * 0.75;
+    const midAmp    = SPECIES_MID_AMP[f.species] || 0.07;
+    const bodyLean  = Math.sin(phase - Math.PI * 0.4) * midAmp * 0.5; // slight lead before tail
+    const tailAngle = Math.sin(phase) * 0.22;
 
     ctx.save();
     ctx.translate(f.x, f.y + Math.sin(phase * 0.7) * 1.5);
     if (!pbKey && f.visualParams && f.visualParams.colorFilter) { ctx.filter = f.visualParams.colorFilter; }
     ctx.scale(scaleX, gs);
-    ctx.rotate(Math.atan2(f.vy, Math.abs(f.vx) + 0.01) * 0.2 + swayAngle);
-    ctx.drawImage(sprite, sx, sy, sw, sh, -targetW / 2, -targetH / 2, targetW, targetH);
+    ctx.rotate(Math.atan2(f.vy, Math.abs(f.vx) + 0.01) * 0.2 + bodyLean);
+
+    if (facesLeft) {
+      // Head at LEFT (-targetW/2), tail at RIGHT
+      const pivotTail = targetW / 2 - tailW;
+      const bodyW     = targetW - tailW + OVERLAP;
+
+      // Body+head: 1:1 source-rect copy — no GPU scaling, no clip
+      ctx.drawImage(sprite, 0, 0, bodyW, targetH,
+        -targetW / 2, -targetH / 2, bodyW, targetH);
+
+      // Tail: wagging right end
+      ctx.save();
+      ctx.translate(pivotTail, 0);
+      ctx.rotate(tailAngle);
+      ctx.translate(-pivotTail, 0);
+      ctx.beginPath();
+      ctx.rect(pivotTail - OVERLAP, -targetH / 2 - 4, tailW + OVERLAP, targetH + 8);
+      ctx.clip();
+      ctx.drawImage(sprite, 0, 0, targetW, targetH, -targetW / 2, -targetH / 2, targetW, targetH);
+      ctx.restore();
+
+    } else {
+      // Head at RIGHT (+targetW/2), tail at LEFT
+      const pivotTail = -targetW / 2 + tailW;
+      const bodyW     = targetW - tailW + OVERLAP;
+
+      // Body+head: 1:1 source-rect copy of right portion — no GPU scaling, no clip
+      ctx.drawImage(sprite,
+        Math.max(0, tailW - OVERLAP), 0, bodyW, targetH,
+        pivotTail - OVERLAP, -targetH / 2, bodyW, targetH);
+
+      // Tail: wagging left end
+      ctx.save();
+      ctx.translate(pivotTail, 0);
+      ctx.rotate(tailAngle);
+      ctx.translate(-pivotTail, 0);
+      ctx.beginPath();
+      ctx.rect(-targetW / 2, -targetH / 2 - 4, tailW + OVERLAP, targetH + 8);
+      ctx.clip();
+      ctx.drawImage(sprite, 0, 0, targetW, targetH, -targetW / 2, -targetH / 2, targetW, targetH);
+      ctx.restore();
+    }
+
     ctx.restore();
   }
 
