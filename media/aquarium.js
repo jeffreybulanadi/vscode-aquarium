@@ -968,31 +968,87 @@
   // Tooltip shown on fish click
   function drawTooltip() {
     if (!tooltipData) return;
-    const remaining = (tooltipData.expires - performance.now()) / 1000;
+    const now = performance.now();
+    const remaining = (tooltipData.expires - now) / 1000;
     if (remaining <= 0) { tooltipData = null; return; }
-    const alpha = Math.min(1, remaining * 3) * 0.93;
+
+    const age   = (now - (tooltipData.created || now)) / 1000;
+    const alpha = Math.min(1, age / 0.18) * Math.min(1, remaining / 0.40);
+
     const lines = tooltipData.lines;
-    const padX = 10, padY = 7, lineH = 17, w = 158;
-    const h = lines.length * lineH + padY * 2;
-    let tx = Math.min(tooltipData.x + 14, W - w - 8);
-    let ty = Math.max(tooltipData.y - h - 14, 8);
+    const padX = 14, padY = 10, titleH = 21, lineH = 16, accentW = 3;
+
     ctx.save();
+    ctx.font = 'bold 12px "Segoe UI", sans-serif';
+    let maxW = ctx.measureText(lines[0] || '').width;
+    ctx.font = '11px "Segoe UI", sans-serif';
+    for (let i = 1; i < lines.length; i++) {
+      maxW = Math.max(maxW, ctx.measureText(lines[i] || '').width);
+    }
+
+    const w = Math.max(152, maxW + padX * 2 + accentW + 8);
+    const h = padY + titleH + (lines.length - 1) * lineH + padY;
+    let tx = Math.min(tooltipData.x + 16, W - w - 8);
+    let ty = Math.max(tooltipData.y - h - 16, 8);
+
     ctx.globalAlpha = alpha;
-    ctx.fillStyle = 'rgba(4,18,32,0.88)';
+
+    // Drop shadow on background only
+    ctx.shadowColor    = 'rgba(0,0,0,0.55)';
+    ctx.shadowBlur     = 18;
+    ctx.shadowOffsetY  = 5;
+
+    // Background
+    ctx.fillStyle = 'rgba(3,11,28,0.96)';
     ctx.beginPath();
-    ctx.roundRect(tx, ty, w, h, 7);
+    ctx.roundRect(tx, ty, w, h, 10);
     ctx.fill();
-    ctx.strokeStyle = 'rgba(255,255,255,0.18)';
-    ctx.lineWidth = 1;
+
+    ctx.shadowColor = 'transparent';
+    ctx.shadowBlur  = 0;
+    ctx.shadowOffsetY = 0;
+
+    // Border
+    ctx.strokeStyle = 'rgba(56,189,248,0.22)';
+    ctx.lineWidth   = 1;
+    ctx.beginPath();
+    ctx.roundRect(tx, ty, w, h, 10);
     ctx.stroke();
-    ctx.fillStyle = '#fff';
-    ctx.textAlign = 'left';
+
+    // Teal left accent bar
+    ctx.fillStyle = 'rgba(56,189,248,0.65)';
+    ctx.beginPath();
+    ctx.roundRect(tx, ty + 10, accentW, h - 20, [2, 0, 0, 2]);
+    ctx.fill();
+
+    const textX = tx + padX + accentW + 6;
+    ctx.textAlign    = 'left';
     ctx.textBaseline = 'top';
-    lines.forEach((line, i) => {
-      ctx.font = i === 0 ? 'bold 12px sans-serif' : '11px sans-serif';
-      ctx.globalAlpha = i === 0 ? alpha : alpha * 0.82;
-      ctx.fillText(line, tx + padX, ty + padY + i * lineH);
-    });
+
+    // Title (teal, bold)
+    ctx.font        = 'bold 12px "Segoe UI", sans-serif';
+    ctx.fillStyle   = 'rgba(125,211,252,1)';
+    ctx.globalAlpha = alpha;
+    ctx.fillText(lines[0] || '', textX, ty + padY);
+
+    // Separator line below title
+    ctx.globalAlpha  = alpha * 0.50;
+    ctx.strokeStyle  = 'rgba(56,189,248,0.30)';
+    ctx.lineWidth    = 1;
+    ctx.beginPath();
+    ctx.moveTo(textX, ty + padY + titleH - 5);
+    ctx.lineTo(tx + w - padX, ty + padY + titleH - 5);
+    ctx.stroke();
+
+    // Stat lines
+    ctx.font = '11px "Segoe UI", sans-serif';
+    for (let i = 1; i < lines.length; i++) {
+      const isMood = i === lines.length - 2;
+      ctx.globalAlpha = alpha * (isMood ? 0.95 : 0.72);
+      ctx.fillStyle   = 'rgba(255,255,255,1)';
+      ctx.fillText(lines[i] || '', textX, ty + padY + titleH + (i - 1) * lineH);
+    }
+
     ctx.restore();
   }
 
@@ -1745,8 +1801,9 @@
           moodStr,
           `Loves: ${pref}`,
         ],
-        x: sx, y: sy,   // tooltip in screen space (drawn outside zoom transform)
+        x: sx, y: sy,
         expires: performance.now() + 4000,
+        created: performance.now(),
       };
       return;
     }
