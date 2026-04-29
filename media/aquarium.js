@@ -545,6 +545,7 @@
         f.vx *= Math.pow(0.92, dt * 60);                    // slow horizontal drift
         f.tailPhase += dt * 1.5;
         if (f.deathTimer > 8) {
+          if (f.target) { f.target.claimedBy = null; f.target = null; }  // release food claim
           fish.splice(i, 1);
           const t2text = aquariumType === 'saltwater' ? 'Saltwater' : 'Freshwater';
           label.innerHTML = `<i class="fa-solid fa-fish"></i> ${t2text} · ${fish.length} fish`;
@@ -556,6 +557,7 @@
       // Hunger accumulates over time - 0=full, 100=starving
       f.hunger = Math.min(100, f.hunger + (HUNGER_DECAY[f.species] || 0.010) * dt);
       if (f.hunger >= 100) {
+        if (f.target) { f.target.claimedBy = null; f.target = null; }  // release claim before dying
         f.dead = true;
         f.deathTimer = 0;
         vscode.postMessage({ type: 'fishDied', species: f.species });
@@ -564,18 +566,22 @@
 
       f.tailPhase += dt * (4 + Math.abs(f.vx) * 0.06);
 
-      // Invalidate target if pellet was eaten by another fish
-      if (f.target && !pellets.includes(f.target)) { f.target = null; f.mood = 'wander'; }
+      // Invalidate target if pellet was eaten by another fish; release claim and scatter immediately
+      if (f.target && !pellets.includes(f.target)) {
+        f.target.claimedBy = null;
+        f.target = null; f.mood = 'wander';
+        f.changeIn = 0;  // pick a new targetY right away so fish don't stay glued to the food spot
+      }
 
-      // Find nearest food to chase (only if not already tracking one)
+      // Find nearest UNCLAIMED food to chase (one fish per pellet prevents pile-on convergence)
       if (pellets.length > 0 && !f.target) {
         let best = null, bestD = Infinity;
         for (const p of pellets) {
+          if (p.claimedBy && p.claimedBy !== f) continue;  // skip pellets already claimed by another fish
           const d = (p.x - f.x) ** 2 + (p.y - f.y) ** 2;
           if (d < bestD) { bestD = d; best = p; }
         }
-        f.target = best;
-        f.mood = 'feeding';
+        if (best) { best.claimedBy = f; f.target = best; f.mood = 'feeding'; }
       }
       if (pellets.length === 0) { f.target = null; f.mood = 'wander'; }
 
@@ -601,6 +607,7 @@
           pellets.splice(pellets.indexOf(f.target), 1);
           f.target = null;
           f.mood = 'wander';
+          f.changeIn = 0;  // force immediate new wandering targetY so fish scatter from eating spot
           vscode.postMessage({ type: 'gameUpdate', coins, fishCount: fish.length });
         }
       } else {
