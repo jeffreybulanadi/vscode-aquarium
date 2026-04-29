@@ -1,6 +1,28 @@
-﻿# Changelog
+# Changelog
 
 All notable changes to VSCode Aquarium are documented in this file.
+
+## [1.5.5] - 2026-04-29
+
+### Added
+- **20-fish tank capacity** - raised hard limit from 10 to 20; HUD counter and full-tank warning update automatically
+
+### Changed
+- **Premium UI/UX overhaul** - deep ocean glassmorphism HUD (`rgba(3,10,24,0.93)` navy base), teal accent border and inner glow, pill-shaped food selector with active state, gold coin counter, logical separator dividers
+- **Spawn panel redesign** - sticky header, fish grouped into four biological categories (Apex Predators / Cichlids / Catfish & Bottom / Community), pill-shaped variant buttons with teal hover glow, custom teal scrollbar
+- **HUD tooltips** - replaced native OS `title=` tooltips (unstyled) with CSS `data-tooltip` tooltips; dark navy gradient box, teal border, upward arrow, slide-in animation
+- **Canvas fish-click tooltip** - dynamic width based on text measurement, teal left accent bar, separator line below species name, species name in sky-300 teal, stat lines with opacity tiers, smooth fade-in (0.18 s) and fade-out (0.4 s)
+
+### Fixed
+- Fish pile-on bug: when a large food drop lands at one spot, all fish converged on the same pellet causing every fish to lock to the same vertical position. Each pellet is now claimed by exactly one fish; other fish pick the next nearest unclaimed pellet. Fish also scatter immediately after eating instead of lingering at the food spot until the wander timer expires.
+
+## [1.5.4] - 2026-04-29
+
+### Added
+- Arapaima: apex predator, surface zone, variants: Natural / Gold / Juvenile
+- German Ram: territorial cichlid, bottom zone, variants: Natural / Female / Gold
+- Iridescent Shark (Cream Dory): schooling species, mid zone, variants: Natural / Juvenile / Albino
+- Replaced Electric Blue Ram sprite with higher-quality image (direction corrected; Electric Blue Ram variant renamed from `german` → `longfin`)
 
 ## [1.5.3] - 2026-04-28
 

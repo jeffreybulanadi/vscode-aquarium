@@ -202,10 +202,13 @@
     silverdollar:    { sheet: 'silverdollar',    fx: 0, fy: 0, fw: 1, fh: 1, targetH: 72,  facesLeft: false, tailRatio: 0.20 },
     tilapia:         { sheet: 'tilapia',         fx: 0, fy: 0, fw: 1, fh: 1, targetH: 72,  facesLeft: false, tailRatio: 0.22 },
     indonesiantiger: { sheet: 'indonesiantiger', fx: 0, fy: 0, fw: 1, fh: 1, targetH: 84,  facesLeft: true,  tailRatio: 0.24 },
-    electricblueram: { sheet: 'electricblueram', fx: 0, fy: 0, fw: 1, fh: 1, targetH: 48,  facesLeft: false, tailRatio: 0.20 },
+    electricblueram: { sheet: 'electricblueram', fx: 0, fy: 0, fw: 1, fh: 1, targetH: 48,  facesLeft: true,  tailRatio: 0.20 },
     diamondstingray: { sheet: 'diamondstingray', fx: 0, fy: 0, fw: 1, fh: 1, targetH: 88,  facesLeft: true,  tailRatio: 0.20 },
     cherrybarb:      { sheet: 'cherrybarb',      fx: 0, fy: 0, fw: 1, fh: 1, targetH: 46,  facesLeft: false, tailRatio: 0.22 },
     angelfish:       { sheet: 'angelfish',       fx: 0, fy: 0, fw: 1, fh: 1, targetH: 94,  facesLeft: false, tailRatio: 0.18 },
+    arapaima:        { sheet: 'arapaima',        fx: 0, fy: 0, fw: 1, fh: 1, targetH: 180, facesLeft: true,  tailRatio: 0.20 },
+    germanram:       { sheet: 'germanram',       fx: 0, fy: 0, fw: 1, fh: 1, targetH: 50,  facesLeft: false, tailRatio: 0.20 },
+    iridescentshark: { sheet: 'iridescentshark', fx: 0, fy: 0, fw: 1, fh: 1, targetH: 96,  facesLeft: true,  tailRatio: 0.26 },
   };
 
   const SPECIES_COLOR_VARIANTS = {
@@ -247,9 +250,9 @@
                    { id: 'natural',   filter: '' },
                    { id: 'dark',      filter: 'brightness(0.72) contrast(1.35) saturate(0.88)' },
                    { id: 'amber',     filter: 'sepia(0.35) saturate(1.6) hue-rotate(10deg) brightness(1.05)' }],
-    electricblueram: [
+     electricblueram: [
                    { id: 'blue',      filter: '' },
-                   { id: 'german',    filter: 'hue-rotate(38deg) saturate(0.82) brightness(1.12)' },
+                   { id: 'longfin',   filter: 'hue-rotate(210deg) saturate(1.4) brightness(1.08)' },
                    { id: 'gold',      filter: 'sepia(0.5) saturate(2.0) hue-rotate(18deg) brightness(1.1)' }],
     diamondstingray: [
                    { id: 'natural',   filter: '' },
@@ -262,6 +265,16 @@
                    { id: 'gold',      filter: 'sepia(0.6) saturate(2.2) hue-rotate(14deg) brightness(1.1)' },
                    { id: 'black',     filter: 'brightness(0.28) contrast(1.25) saturate(0.10)' },
                    { id: 'marble',    filter: 'contrast(1.5) hue-rotate(8deg) saturate(0.72)' }],
+    arapaima:     [{ id: 'natural',   filter: '' },
+                   { id: 'gold',      filter: 'sepia(0.6) saturate(2.5) hue-rotate(20deg) brightness(1.1)' },
+                   { id: 'juvenile',  filter: 'hue-rotate(30deg) saturate(1.3) brightness(1.05) contrast(1.1)' }],
+    germanram:    [{ id: 'natural',   filter: '' },
+                   { id: 'female',    filter: 'hue-rotate(340deg) saturate(1.6) brightness(1.05) contrast(1.1)' },
+                   { id: 'gold',      filter: 'sepia(0.5) saturate(2.8) hue-rotate(15deg) brightness(1.1)' }],
+    iridescentshark: [
+                   { id: 'natural',   filter: '' },
+                   { id: 'juvenile',  filter: 'hue-rotate(210deg) saturate(1.6) brightness(1.1) contrast(1.05)' },
+                   { id: 'albino',    filter: 'sepia(0.18) brightness(1.65) saturate(0.32)' }],
   };
 
   const SPECIES_ZONE = {
@@ -281,6 +294,9 @@
     diamondstingray: { yMin: 0.84, yMax: 0.97 },
     cherrybarb:      { yMin: 0.12, yMax: 0.68 },
     angelfish:       { yMin: 0.18, yMax: 0.78 },
+    arapaima:        { yMin: 0.05, yMax: 0.45 },
+    germanram:       { yMin: 0.50, yMax: 0.90 },
+    iridescentshark: { yMin: 0.15, yMax: 0.75 },
   };
 
   const SPECIES_SPEED = {
@@ -290,6 +306,7 @@
     rtcatfish: 14, pleco: 6,
     tilapia: 24, indonesiantiger: 32, electricblueram: 18,
     diamondstingray: 10, cherrybarb: 38, angelfish: 16,
+    arapaima: 50, germanram: 16, iridescentshark: 42,
   };
 
   const SPECIES_MID_AMP = {
@@ -299,6 +316,7 @@
     rtcatfish: 0.08, pleco: 0.03,
     tilapia: 0.07, indonesiantiger: 0.09, electricblueram: 0.08,
     diamondstingray: 0.02, cherrybarb: 0.10, angelfish: 0.05,
+    arapaima: 0.06, germanram: 0.08, iridescentshark: 0.09,
   };
 
   const HUNGER_DECAY = {
@@ -307,15 +325,16 @@
     peacockbass: 0.012, knifefish: 0.009, silverdollar: 0.010,
     tilapia: 0.012, indonesiantiger: 0.011, electricblueram: 0.014,
     diamondstingray: 0.008, cherrybarb: 0.015, angelfish: 0.010,
+    arapaima: 0.009, germanram: 0.013, iridescentshark: 0.011,
   };
 
   // True schooling fish - Boids (separation + alignment + cohesion) during wander.
-  const SCHOOLING_SPECIES = new Set(['cherrybarb', 'silverdollar']);
+  const SCHOOLING_SPECIES = new Set(['cherrybarb', 'silverdollar', 'iridescentshark']);
   // Territorial cichlids - slowly patrol a home zone rather than wandering freely.
-  const TERRITORIAL_SPECIES = new Set(['oscar', 'flowerhorn', 'peacockbass', 'electricblueram']);
+  const TERRITORIAL_SPECIES = new Set(['oscar', 'flowerhorn', 'peacockbass', 'electricblueram', 'germanram']);
   // Predator/prey for mock-chase behavior (purely cosmetic - prey never gets eaten).
-  const PREDATOR_SPECIES = new Set(['arowana', 'alligatorgar', 'snakehead', 'indonesiantiger']);
-  const PREY_SPECIES     = new Set(['cherrybarb', 'electricblueram']);
+  const PREDATOR_SPECIES = new Set(['arowana', 'alligatorgar', 'snakehead', 'indonesiantiger', 'arapaima']);
+  const PREY_SPECIES     = new Set(['cherrybarb', 'electricblueram', 'germanram']);
   const CHASE_RADIUS = 280; // px - predator notices prey within this range
   const FLEE_RADIUS  = 220; // px - prey detects and flees from predator
 
@@ -336,6 +355,9 @@
     diamondstingray: ['shrimp', 'superworm'],
     cherrybarb:   ['pellet', 'cricket'],
     angelfish:    ['shrimp', 'pellet'],
+    arapaima:     ['cricket', 'shrimp'],
+    germanram:    ['pellet', 'shrimp'],
+    iridescentshark: ['pellet', 'cricket'],
   };
 
   const SPECIES_LABEL = {
@@ -346,6 +368,7 @@
     tilapia: 'Tilapia', indonesiantiger: 'Indonesian Tiger Fish',
     electricblueram: 'Electric Blue Ram', diamondstingray: 'Diamond Stingray',
     cherrybarb: 'Cherry Barb', angelfish: 'Angelfish',
+    arapaima: 'Arapaima', germanram: 'German Ram', iridescentshark: 'Iridescent Shark',
   };
 
   // ---------- Resize ----------
@@ -522,6 +545,7 @@
         f.vx *= Math.pow(0.92, dt * 60);                    // slow horizontal drift
         f.tailPhase += dt * 1.5;
         if (f.deathTimer > 8) {
+          if (f.target) { f.target.claimedBy = null; f.target = null; }  // release food claim
           fish.splice(i, 1);
           const t2text = aquariumType === 'saltwater' ? 'Saltwater' : 'Freshwater';
           label.innerHTML = `<i class="fa-solid fa-fish"></i> ${t2text} · ${fish.length} fish`;
@@ -533,6 +557,7 @@
       // Hunger accumulates over time - 0=full, 100=starving
       f.hunger = Math.min(100, f.hunger + (HUNGER_DECAY[f.species] || 0.010) * dt);
       if (f.hunger >= 100) {
+        if (f.target) { f.target.claimedBy = null; f.target = null; }  // release claim before dying
         f.dead = true;
         f.deathTimer = 0;
         vscode.postMessage({ type: 'fishDied', species: f.species });
@@ -541,18 +566,22 @@
 
       f.tailPhase += dt * (4 + Math.abs(f.vx) * 0.06);
 
-      // Invalidate target if pellet was eaten by another fish
-      if (f.target && !pellets.includes(f.target)) { f.target = null; f.mood = 'wander'; }
+      // Invalidate target if pellet was eaten by another fish; release claim and scatter immediately
+      if (f.target && !pellets.includes(f.target)) {
+        f.target.claimedBy = null;
+        f.target = null; f.mood = 'wander';
+        f.changeIn = 0;  // pick a new targetY right away so fish don't stay glued to the food spot
+      }
 
-      // Find nearest food to chase (only if not already tracking one)
+      // Find nearest UNCLAIMED food to chase (one fish per pellet prevents pile-on convergence)
       if (pellets.length > 0 && !f.target) {
         let best = null, bestD = Infinity;
         for (const p of pellets) {
+          if (p.claimedBy && p.claimedBy !== f) continue;  // skip pellets already claimed by another fish
           const d = (p.x - f.x) ** 2 + (p.y - f.y) ** 2;
           if (d < bestD) { bestD = d; best = p; }
         }
-        f.target = best;
-        f.mood = 'feeding';
+        if (best) { best.claimedBy = f; f.target = best; f.mood = 'feeding'; }
       }
       if (pellets.length === 0) { f.target = null; f.mood = 'wander'; }
 
@@ -578,6 +607,7 @@
           pellets.splice(pellets.indexOf(f.target), 1);
           f.target = null;
           f.mood = 'wander';
+          f.changeIn = 0;  // force immediate new wandering targetY so fish scatter from eating spot
           vscode.postMessage({ type: 'gameUpdate', coins, fishCount: fish.length });
         }
       } else {
@@ -601,7 +631,7 @@
       }
 
       // ---- Schooling: cherrybarb, silverdollar (Boids) ----
-      // Only during wander (not chasing food). O(n) per fish, n ≤ 10, safe at 30fps.
+      // Only during wander (not chasing food). O(n) per fish, n ≤ 20, safe at 30fps.
       if (SCHOOLING_SPECIES.has(f.species) && !f.target) {
         let sepX = 0, sepY = 0, sepN = 0;
         let sumVx = 0, sumVy = 0, sumX = 0, sumY = 0, nbN = 0;
@@ -945,31 +975,87 @@
   // Tooltip shown on fish click
   function drawTooltip() {
     if (!tooltipData) return;
-    const remaining = (tooltipData.expires - performance.now()) / 1000;
+    const now = performance.now();
+    const remaining = (tooltipData.expires - now) / 1000;
     if (remaining <= 0) { tooltipData = null; return; }
-    const alpha = Math.min(1, remaining * 3) * 0.93;
+
+    const age   = (now - (tooltipData.created || now)) / 1000;
+    const alpha = Math.min(1, age / 0.18) * Math.min(1, remaining / 0.40);
+
     const lines = tooltipData.lines;
-    const padX = 10, padY = 7, lineH = 17, w = 158;
-    const h = lines.length * lineH + padY * 2;
-    let tx = Math.min(tooltipData.x + 14, W - w - 8);
-    let ty = Math.max(tooltipData.y - h - 14, 8);
+    const padX = 14, padY = 10, titleH = 21, lineH = 16, accentW = 3;
+
     ctx.save();
+    ctx.font = 'bold 12px "Segoe UI", sans-serif';
+    let maxW = ctx.measureText(lines[0] || '').width;
+    ctx.font = '11px "Segoe UI", sans-serif';
+    for (let i = 1; i < lines.length; i++) {
+      maxW = Math.max(maxW, ctx.measureText(lines[i] || '').width);
+    }
+
+    const w = Math.max(152, maxW + padX * 2 + accentW + 8);
+    const h = padY + titleH + (lines.length - 1) * lineH + padY;
+    let tx = Math.min(tooltipData.x + 16, W - w - 8);
+    let ty = Math.max(tooltipData.y - h - 16, 8);
+
     ctx.globalAlpha = alpha;
-    ctx.fillStyle = 'rgba(4,18,32,0.88)';
+
+    // Drop shadow on background only
+    ctx.shadowColor    = 'rgba(0,0,0,0.55)';
+    ctx.shadowBlur     = 18;
+    ctx.shadowOffsetY  = 5;
+
+    // Background
+    ctx.fillStyle = 'rgba(3,11,28,0.96)';
     ctx.beginPath();
-    ctx.roundRect(tx, ty, w, h, 7);
+    ctx.roundRect(tx, ty, w, h, 10);
     ctx.fill();
-    ctx.strokeStyle = 'rgba(255,255,255,0.18)';
-    ctx.lineWidth = 1;
+
+    ctx.shadowColor = 'transparent';
+    ctx.shadowBlur  = 0;
+    ctx.shadowOffsetY = 0;
+
+    // Border
+    ctx.strokeStyle = 'rgba(56,189,248,0.22)';
+    ctx.lineWidth   = 1;
+    ctx.beginPath();
+    ctx.roundRect(tx, ty, w, h, 10);
     ctx.stroke();
-    ctx.fillStyle = '#fff';
-    ctx.textAlign = 'left';
+
+    // Teal left accent bar
+    ctx.fillStyle = 'rgba(56,189,248,0.65)';
+    ctx.beginPath();
+    ctx.roundRect(tx, ty + 10, accentW, h - 20, [2, 0, 0, 2]);
+    ctx.fill();
+
+    const textX = tx + padX + accentW + 6;
+    ctx.textAlign    = 'left';
     ctx.textBaseline = 'top';
-    lines.forEach((line, i) => {
-      ctx.font = i === 0 ? 'bold 12px sans-serif' : '11px sans-serif';
-      ctx.globalAlpha = i === 0 ? alpha : alpha * 0.82;
-      ctx.fillText(line, tx + padX, ty + padY + i * lineH);
-    });
+
+    // Title (teal, bold)
+    ctx.font        = 'bold 12px "Segoe UI", sans-serif';
+    ctx.fillStyle   = 'rgba(125,211,252,1)';
+    ctx.globalAlpha = alpha;
+    ctx.fillText(lines[0] || '', textX, ty + padY);
+
+    // Separator line below title
+    ctx.globalAlpha  = alpha * 0.50;
+    ctx.strokeStyle  = 'rgba(56,189,248,0.30)';
+    ctx.lineWidth    = 1;
+    ctx.beginPath();
+    ctx.moveTo(textX, ty + padY + titleH - 5);
+    ctx.lineTo(tx + w - padX, ty + padY + titleH - 5);
+    ctx.stroke();
+
+    // Stat lines
+    ctx.font = '11px "Segoe UI", sans-serif';
+    for (let i = 1; i < lines.length; i++) {
+      const isMood = i === lines.length - 2;
+      ctx.globalAlpha = alpha * (isMood ? 0.95 : 0.72);
+      ctx.fillStyle   = 'rgba(255,255,255,1)';
+      ctx.fillText(lines[i] || '', textX, ty + padY + titleH + (i - 1) * lineH);
+    }
+
     ctx.restore();
   }
 
@@ -1722,8 +1808,9 @@
           moodStr,
           `Loves: ${pref}`,
         ],
-        x: sx, y: sy,   // tooltip in screen space (drawn outside zoom transform)
+        x: sx, y: sy,
         expires: performance.now() + 4000,
+        created: performance.now(),
       };
       return;
     }
@@ -1745,7 +1832,7 @@
     }
   });
 
-  const MAX_FISH = 10;
+  const MAX_FISH = 20;
 
   spawnPanel.querySelectorAll('.spawn-variants button').forEach(btn => {
     btn.addEventListener('click', () => {
