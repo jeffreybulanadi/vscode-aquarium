@@ -90,7 +90,7 @@ Each species has distinct movement patterns beyond basic swimming:
 - In-tank spawn panel: click the Add button to choose species and color variant; fish grouped by biological category
 - Live clock display synced to system time
 - Premium HUD: deep ocean glassmorphism styling with teal accents and hover-glow buttons
-- Click any fish for a canvas tooltip: species name, hunger level, size, mood, and preferred food — with fade-in/fade-out animation and a teal accent bar
+- Click any fish for a canvas tooltip: species name, hunger level, size, mood, and preferred food - with fade-in/fade-out animation and a teal accent bar
 - Hover any HUD button for a styled CSS tooltip (replaces plain browser tooltips)
 - Blinking hunger indicator above fish that need feeding (orange at 45%+, red at 75%+)
 - Status bar item showing live fish count and coin total
