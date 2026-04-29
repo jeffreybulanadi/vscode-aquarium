@@ -14,6 +14,7 @@
     <div id="hud">
       <span id="label"><i class="fa-solid fa-fish"></i> Freshwater · 0 fish</span>
       <span id="clockLabel"><i class="fa-solid fa-clock"></i> 00:00</span>
+      <div class="sep"></div>
       <div id="foodSelector">
         <button class="food-opt active" data-food="pellet"    title="Pellet"><i class="fa-solid fa-circle-dot"></i></button>
         <button class="food-opt"        data-food="superworm" title="Superworm"><i class="fa-solid fa-worm"></i></button>
@@ -21,35 +22,47 @@
         <button class="food-opt"        data-food="shrimp"    title="Shrimp"><i class="fa-solid fa-shrimp"></i></button>
       </div>
       <button id="feedBtn"  title="Drop food"><i class="fa-solid fa-utensils"></i> Feed</button>
+      <div class="sep"></div>
       <button id="cleanBtn" title="Clean tank (5 min cooldown)"><i class="fa-solid fa-broom"></i> Clean</button>
       <button id="spawnBtn" title="Add a fish"><i class="fa-solid fa-plus"></i> Spawn</button>
       <button id="resetBtn" title="Reset to default fish"><i class="fa-solid fa-rotate-left"></i> Reset</button>
+      <div class="sep"></div>
       <button id="lightBtn" title="Toggle day / night / auto"><i class="fa-solid fa-clock-rotate-left"></i> Auto</button>
       <button id="zoomBtn" title="Cycle zoom level"><i class="fa-solid fa-magnifying-glass-plus"></i> 1x</button>
+      <div class="sep"></div>
       <span id="coinsLabel"><i class="fa-solid fa-coins"></i> 0</span>
     </div>
     <div id="spawnPanel" class="hidden">
       <div class="spawn-title">Add Fish</div>
       <div class="spawn-list">
+
+        <div class="spawn-category">Apex Predators</div>
         <div class="spawn-row"><span class="spawn-name">Arowana</span><div class="spawn-variants"><button data-species="arowana" data-variant="silver">Silver</button><button data-species="arowana" data-variant="golden">Golden</button><button data-species="arowana" data-variant="red">Red</button><button data-species="arowana" data-variant="green">Green</button></div></div>
-        <div class="spawn-row"><span class="spawn-name">Oscar Cichlid</span><div class="spawn-variants"><button data-species="oscar" data-variant="tiger">Tiger</button><button data-species="oscar" data-variant="red">Red</button><button data-species="oscar" data-variant="albino">Albino</button></div></div>
-        <div class="spawn-row"><span class="spawn-name">Snakehead</span><div class="spawn-variants"><button data-species="snakehead" data-variant="olive">Olive</button><button data-species="snakehead" data-variant="giant">Giant</button><button data-species="snakehead" data-variant="rainbow">Rainbow</button></div></div>
-        <div class="spawn-row"><span class="spawn-name">Peacock Bass</span><div class="spawn-variants"><button data-species="peacockbass" data-variant="natural">Natural</button><button data-species="peacockbass" data-variant="speckled">Speckled</button><button data-species="peacockbass" data-variant="butterfly">Butterfly</button></div></div>
         <div class="spawn-row"><span class="spawn-name">Alligator Gar</span><div class="spawn-variants"><button data-species="alligatorgar" data-variant="olive">Olive</button><button data-species="alligatorgar" data-variant="spotted">Spotted</button><button data-species="alligatorgar" data-variant="albino">Albino</button></div></div>
+        <div class="spawn-row"><span class="spawn-name">Snakehead</span><div class="spawn-variants"><button data-species="snakehead" data-variant="olive">Olive</button><button data-species="snakehead" data-variant="giant">Giant</button><button data-species="snakehead" data-variant="rainbow">Rainbow</button></div></div>
+        <div class="spawn-row"><span class="spawn-name">Arapaima</span><div class="spawn-variants"><button data-species="arapaima" data-variant="natural">Natural</button><button data-species="arapaima" data-variant="gold">Gold</button><button data-species="arapaima" data-variant="juvenile">Juvenile</button></div></div>
+
+        <div class="spawn-category">Cichlids</div>
+        <div class="spawn-row"><span class="spawn-name">Oscar</span><div class="spawn-variants"><button data-species="oscar" data-variant="tiger">Tiger</button><button data-species="oscar" data-variant="red">Red</button><button data-species="oscar" data-variant="albino">Albino</button></div></div>
+        <div class="spawn-row"><span class="spawn-name">Flowerhorn</span><div class="spawn-variants"><button data-species="flowerhorn" data-variant="red_dragon">Red Dragon</button><button data-species="flowerhorn" data-variant="golden">Golden</button><button data-species="flowerhorn" data-variant="kamfa">Kamfa</button><button data-species="flowerhorn" data-variant="blue">Blue</button></div></div>
+        <div class="spawn-row"><span class="spawn-name">Peacock Bass</span><div class="spawn-variants"><button data-species="peacockbass" data-variant="natural">Natural</button><button data-species="peacockbass" data-variant="speckled">Speckled</button><button data-species="peacockbass" data-variant="butterfly">Butterfly</button></div></div>
+        <div class="spawn-row"><span class="spawn-name">Electric Blue Ram</span><div class="spawn-variants"><button data-species="electricblueram" data-variant="blue">Blue</button><button data-species="electricblueram" data-variant="longfin">Longfin</button><button data-species="electricblueram" data-variant="gold">Gold</button></div></div>
+        <div class="spawn-row"><span class="spawn-name">German Ram</span><div class="spawn-variants"><button data-species="germanram" data-variant="natural">Natural</button><button data-species="germanram" data-variant="female">Female</button><button data-species="germanram" data-variant="gold">Gold</button></div></div>
+
+        <div class="spawn-category">Catfish &amp; Bottom</div>
         <div class="spawn-row"><span class="spawn-name">Red-Tail Catfish</span><div class="spawn-variants"><button data-species="rtcatfish" data-variant="natural">Natural</button><button data-species="rtcatfish" data-variant="albino">Albino</button></div></div>
         <div class="spawn-row"><span class="spawn-name">Pleco</span><div class="spawn-variants"><button data-species="pleco" data-variant="common">Common</button><button data-species="pleco" data-variant="royal">Royal</button><button data-species="pleco" data-variant="goldnugget">Gold Nugget</button></div></div>
-        <div class="spawn-row"><span class="spawn-name">Flowerhorn</span><div class="spawn-variants"><button data-species="flowerhorn" data-variant="red_dragon">Red Dragon</button><button data-species="flowerhorn" data-variant="golden">Golden</button><button data-species="flowerhorn" data-variant="kamfa">Kamfa</button><button data-species="flowerhorn" data-variant="blue">Blue</button></div></div>
         <div class="spawn-row"><span class="spawn-name">Knifefish</span><div class="spawn-variants"><button data-species="knifefish" data-variant="natural">Natural</button><button data-species="knifefish" data-variant="ghost">Ghost</button><button data-species="knifefish" data-variant="dark">Dark</button></div></div>
-        <div class="spawn-row"><span class="spawn-name">Silver Dollar</span><div class="spawn-variants"><button data-species="silverdollar" data-variant="silver">Silver</button><button data-species="silverdollar" data-variant="spotted">Spotted</button><button data-species="silverdollar" data-variant="red_hook">Red Hook</button></div></div>
-        <div class="spawn-row"><span class="spawn-name">Tilapia</span><div class="spawn-variants"><button data-species="tilapia" data-variant="natural">Natural</button><button data-species="tilapia" data-variant="blue">Blue</button><button data-species="tilapia" data-variant="red">Red</button></div></div>
-        <div class="spawn-row"><span class="spawn-name">Indonesian Tiger</span><div class="spawn-variants"><button data-species="indonesiantiger" data-variant="natural">Natural</button><button data-species="indonesiantiger" data-variant="dark">Dark</button><button data-species="indonesiantiger" data-variant="amber">Amber</button></div></div>
-        <div class="spawn-row"><span class="spawn-name">Electric Blue Ram</span><div class="spawn-variants"><button data-species="electricblueram" data-variant="blue">Blue</button><button data-species="electricblueram" data-variant="longfin">Longfin</button><button data-species="electricblueram" data-variant="gold">Gold</button></div></div>
         <div class="spawn-row"><span class="spawn-name">Diamond Stingray</span><div class="spawn-variants"><button data-species="diamondstingray" data-variant="natural">Natural</button><button data-species="diamondstingray" data-variant="dark">Dark</button><button data-species="diamondstingray" data-variant="albino">Albino</button></div></div>
+
+        <div class="spawn-category">Community</div>
+        <div class="spawn-row"><span class="spawn-name">Silver Dollar</span><div class="spawn-variants"><button data-species="silverdollar" data-variant="silver">Silver</button><button data-species="silverdollar" data-variant="spotted">Spotted</button><button data-species="silverdollar" data-variant="red_hook">Red Hook</button></div></div>
+        <div class="spawn-row"><span class="spawn-name">Indonesian Tiger</span><div class="spawn-variants"><button data-species="indonesiantiger" data-variant="natural">Natural</button><button data-species="indonesiantiger" data-variant="dark">Dark</button><button data-species="indonesiantiger" data-variant="amber">Amber</button></div></div>
+        <div class="spawn-row"><span class="spawn-name">Tilapia</span><div class="spawn-variants"><button data-species="tilapia" data-variant="natural">Natural</button><button data-species="tilapia" data-variant="blue">Blue</button><button data-species="tilapia" data-variant="red">Red</button></div></div>
         <div class="spawn-row"><span class="spawn-name">Cherry Barb</span><div class="spawn-variants"><button data-species="cherrybarb" data-variant="red">Red</button><button data-species="cherrybarb" data-variant="female">Female</button><button data-species="cherrybarb" data-variant="albino">Albino</button></div></div>
         <div class="spawn-row"><span class="spawn-name">Angelfish</span><div class="spawn-variants"><button data-species="angelfish" data-variant="silver">Silver</button><button data-species="angelfish" data-variant="gold">Gold</button><button data-species="angelfish" data-variant="black">Black</button><button data-species="angelfish" data-variant="marble">Marble</button></div></div>
-        <div class="spawn-row"><span class="spawn-name">Arapaima</span><div class="spawn-variants"><button data-species="arapaima" data-variant="natural">Natural</button><button data-species="arapaima" data-variant="gold">Gold</button><button data-species="arapaima" data-variant="juvenile">Juvenile</button></div></div>
-        <div class="spawn-row"><span class="spawn-name">German Ram</span><div class="spawn-variants"><button data-species="germanram" data-variant="natural">Natural</button><button data-species="germanram" data-variant="female">Female</button><button data-species="germanram" data-variant="gold">Gold</button></div></div>
         <div class="spawn-row"><span class="spawn-name">Iridescent Shark</span><div class="spawn-variants"><button data-species="iridescentshark" data-variant="natural">Natural</button><button data-species="iridescentshark" data-variant="juvenile">Juvenile</button><button data-species="iridescentshark" data-variant="albino">Albino</button></div></div>
+
       </div>
     </div>
   </div>
