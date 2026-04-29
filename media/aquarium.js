@@ -206,9 +206,9 @@
     diamondstingray: { sheet: 'diamondstingray', fx: 0, fy: 0, fw: 1, fh: 1, targetH: 88,  facesLeft: true,  tailRatio: 0.20 },
     cherrybarb:      { sheet: 'cherrybarb',      fx: 0, fy: 0, fw: 1, fh: 1, targetH: 46,  facesLeft: false, tailRatio: 0.22 },
     angelfish:       { sheet: 'angelfish',       fx: 0, fy: 0, fw: 1, fh: 1, targetH: 94,  facesLeft: false, tailRatio: 0.18 },
-    arapaima:        { sheet: 'arapaima',        fx: 0, fy: 0, fw: 1, fh: 1, targetH: 180, facesLeft: false, tailRatio: 0.20 },
+    arapaima:        { sheet: 'arapaima',        fx: 0, fy: 0, fw: 1, fh: 1, targetH: 180, facesLeft: true,  tailRatio: 0.20 },
     germanram:       { sheet: 'germanram',       fx: 0, fy: 0, fw: 1, fh: 1, targetH: 50,  facesLeft: false, tailRatio: 0.20 },
-    iridescentshark: { sheet: 'iridescentshark', fx: 0, fy: 0, fw: 1, fh: 1, targetH: 96,  facesLeft: false, tailRatio: 0.26 },
+    iridescentshark: { sheet: 'iridescentshark', fx: 0, fy: 0, fw: 1, fh: 1, targetH: 96,  facesLeft: true,  tailRatio: 0.26 },
   };
 
   const SPECIES_COLOR_VARIANTS = {
