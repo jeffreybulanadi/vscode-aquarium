@@ -30,12 +30,12 @@ const SPECIES_COLOR_VARIANTS_EXT: Record<string, string[]> = {
   silverdollar:    ['silver', 'spotted', 'red_hook'],
   tilapia:         ['natural', 'blue', 'red'],
   indonesiantiger: ['natural', 'dark', 'amber'],
-  electricblueram: ['blue', 'german', 'gold'],
+  electricblueram: ['blue', 'longfin', 'gold'],
   diamondstingray: ['natural', 'dark', 'albino'],
   cherrybarb:      ['red', 'female', 'albino'],
   angelfish:       ['silver', 'gold', 'black', 'marble'],
   arapaima:        ['natural', 'gold', 'juvenile'],
-  germanram:       ['natural', 'electric', 'gold'],
+  germanram:       ['natural', 'female', 'gold'],
   iridescentshark: ['natural', 'juvenile', 'albino'],
 };
 

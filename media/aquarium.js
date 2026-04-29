@@ -202,7 +202,7 @@
     silverdollar:    { sheet: 'silverdollar',    fx: 0, fy: 0, fw: 1, fh: 1, targetH: 72,  facesLeft: false, tailRatio: 0.20 },
     tilapia:         { sheet: 'tilapia',         fx: 0, fy: 0, fw: 1, fh: 1, targetH: 72,  facesLeft: false, tailRatio: 0.22 },
     indonesiantiger: { sheet: 'indonesiantiger', fx: 0, fy: 0, fw: 1, fh: 1, targetH: 84,  facesLeft: true,  tailRatio: 0.24 },
-    electricblueram: { sheet: 'electricblueram', fx: 0, fy: 0, fw: 1, fh: 1, targetH: 48,  facesLeft: false, tailRatio: 0.20 },
+    electricblueram: { sheet: 'electricblueram', fx: 0, fy: 0, fw: 1, fh: 1, targetH: 48,  facesLeft: true,  tailRatio: 0.20 },
     diamondstingray: { sheet: 'diamondstingray', fx: 0, fy: 0, fw: 1, fh: 1, targetH: 88,  facesLeft: true,  tailRatio: 0.20 },
     cherrybarb:      { sheet: 'cherrybarb',      fx: 0, fy: 0, fw: 1, fh: 1, targetH: 46,  facesLeft: false, tailRatio: 0.22 },
     angelfish:       { sheet: 'angelfish',       fx: 0, fy: 0, fw: 1, fh: 1, targetH: 94,  facesLeft: false, tailRatio: 0.18 },
@@ -250,9 +250,9 @@
                    { id: 'natural',   filter: '' },
                    { id: 'dark',      filter: 'brightness(0.72) contrast(1.35) saturate(0.88)' },
                    { id: 'amber',     filter: 'sepia(0.35) saturate(1.6) hue-rotate(10deg) brightness(1.05)' }],
-    electricblueram: [
+     electricblueram: [
                    { id: 'blue',      filter: '' },
-                   { id: 'german',    filter: 'hue-rotate(38deg) saturate(0.82) brightness(1.12)' },
+                   { id: 'longfin',   filter: 'hue-rotate(210deg) saturate(1.4) brightness(1.08)' },
                    { id: 'gold',      filter: 'sepia(0.5) saturate(2.0) hue-rotate(18deg) brightness(1.1)' }],
     diamondstingray: [
                    { id: 'natural',   filter: '' },
@@ -269,7 +269,7 @@
                    { id: 'gold',      filter: 'sepia(0.6) saturate(2.5) hue-rotate(20deg) brightness(1.1)' },
                    { id: 'juvenile',  filter: 'hue-rotate(30deg) saturate(1.3) brightness(1.05) contrast(1.1)' }],
     germanram:    [{ id: 'natural',   filter: '' },
-                   { id: 'electric',  filter: 'hue-rotate(195deg) saturate(2.2) brightness(1.05)' },
+                   { id: 'female',    filter: 'hue-rotate(340deg) saturate(1.6) brightness(1.05) contrast(1.1)' },
                    { id: 'gold',      filter: 'sepia(0.5) saturate(2.8) hue-rotate(15deg) brightness(1.1)' }],
     iridescentshark: [
                    { id: 'natural',   filter: '' },
