@@ -2,7 +2,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 
-const FRESHWATER_SPECIES = ['arowana', 'oscar', 'snakehead', 'alligatorgar', 'rtcatfish', 'pleco', 'flowerhorn', 'peacockbass', 'knifefish', 'silverdollar', 'tilapia', 'indonesiantiger', 'electricblueram', 'diamondstingray', 'cherrybarb', 'angelfish'];
+const FRESHWATER_SPECIES = ['arowana', 'oscar', 'snakehead', 'alligatorgar', 'rtcatfish', 'pleco', 'flowerhorn', 'peacockbass', 'knifefish', 'silverdollar', 'tilapia', 'indonesiantiger', 'electricblueram', 'diamondstingray', 'cherrybarb', 'angelfish', 'arapaima', 'germanram', 'iridescentshark'];
 const SALTWATER_SPECIES = ['clownfish', 'tang', 'lionfish', 'angel-marine', 'pufferfish'];
 
 const SPECIES_LABELS: Record<string, string> = {
@@ -13,6 +13,7 @@ const SPECIES_LABELS: Record<string, string> = {
   tilapia: 'Tilapia', indonesiantiger: 'Indonesian Tiger Fish',
   electricblueram: 'Electric Blue Ram', diamondstingray: 'Diamond Stingray',
   cherrybarb: 'Cherry Barb', angelfish: 'Angelfish',
+  arapaima: 'Arapaima', germanram: 'German Ram', iridescentshark: 'Iridescent Shark',
   clownfish: 'Clownfish', tang: 'Tang', lionfish: 'Lionfish', 'angel-marine': 'Marine Angel', pufferfish: 'Pufferfish'
 };
 
@@ -33,6 +34,9 @@ const SPECIES_COLOR_VARIANTS_EXT: Record<string, string[]> = {
   diamondstingray: ['natural', 'dark', 'albino'],
   cherrybarb:      ['red', 'female', 'albino'],
   angelfish:       ['silver', 'gold', 'black', 'marble'],
+  arapaima:        ['natural', 'gold', 'juvenile'],
+  germanram:       ['natural', 'electric', 'gold'],
+  iridescentshark: ['natural', 'juvenile', 'albino'],
 };
 
 let panel: vscode.WebviewPanel | undefined;
@@ -294,6 +298,15 @@ function getHtml(context: vscode.ExtensionContext, webview: vscode.Webview): str
   const angelfishUri = webview.asWebviewUri(
     vscode.Uri.file(path.join(context.extensionPath, 'media', 'fish', 'angelfish.jpg'))
   );
+  const arapaimaUri = webview.asWebviewUri(
+    vscode.Uri.file(path.join(context.extensionPath, 'media', 'fish', 'arapaima.jpg'))
+  );
+  const germanramUri = webview.asWebviewUri(
+    vscode.Uri.file(path.join(context.extensionPath, 'media', 'fish', 'german-ram.jpg'))
+  );
+  const iridescentsharkUri = webview.asWebviewUri(
+    vscode.Uri.file(path.join(context.extensionPath, 'media', 'fish', 'iridescent-shark.jpg'))
+  );
   const fontawesomeUri = webview.asWebviewUri(
     vscode.Uri.file(path.join(context.extensionPath, 'media', 'fontawesome.min.css'))
   );
@@ -324,7 +337,10 @@ function getHtml(context: vscode.ExtensionContext, webview: vscode.Webview): str
     .replace(/{{electricblueramUri}}/g, electricblueramUri.toString())
     .replace(/{{diamondstingrayUri}}/g, diamondstingrayUri.toString())
     .replace(/{{cherrybarbUri}}/g, cherrybarbUri.toString())
-    .replace(/{{angelfishUri}}/g, angelfishUri.toString());
+    .replace(/{{angelfishUri}}/g, angelfishUri.toString())
+    .replace(/{{arapaimaUri}}/g, arapaimaUri.toString())
+    .replace(/{{germanramUri}}/g, germanramUri.toString())
+    .replace(/{{iridescentsharkUri}}/g, iridescentsharkUri.toString());
   return html;
 }
 

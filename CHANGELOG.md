@@ -2,6 +2,14 @@
 
 All notable changes to VSCode Aquarium are documented in this file.
 
+## [1.5.4] - 2025-07
+
+### Added
+- Arapaima: apex predator, surface zone, variants: Natural / Gold / Juvenile
+- German Ram: territorial cichlid, bottom zone, variants: Natural / Electric / Gold
+- Iridescent Shark (Cream Dory): schooling species, mid zone, variants: Natural / Juvenile / Albino
+- Replaced Electric Blue Ram sprite with higher-quality image
+
 ## [1.5.3] - 2026-04-28
 
 ### Fixed

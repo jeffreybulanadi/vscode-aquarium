@@ -206,6 +206,9 @@
     diamondstingray: { sheet: 'diamondstingray', fx: 0, fy: 0, fw: 1, fh: 1, targetH: 88,  facesLeft: true,  tailRatio: 0.20 },
     cherrybarb:      { sheet: 'cherrybarb',      fx: 0, fy: 0, fw: 1, fh: 1, targetH: 46,  facesLeft: false, tailRatio: 0.22 },
     angelfish:       { sheet: 'angelfish',       fx: 0, fy: 0, fw: 1, fh: 1, targetH: 94,  facesLeft: false, tailRatio: 0.18 },
+    arapaima:        { sheet: 'arapaima',        fx: 0, fy: 0, fw: 1, fh: 1, targetH: 180, facesLeft: false, tailRatio: 0.20 },
+    germanram:       { sheet: 'germanram',       fx: 0, fy: 0, fw: 1, fh: 1, targetH: 50,  facesLeft: false, tailRatio: 0.20 },
+    iridescentshark: { sheet: 'iridescentshark', fx: 0, fy: 0, fw: 1, fh: 1, targetH: 96,  facesLeft: false, tailRatio: 0.26 },
   };
 
   const SPECIES_COLOR_VARIANTS = {
@@ -262,6 +265,16 @@
                    { id: 'gold',      filter: 'sepia(0.6) saturate(2.2) hue-rotate(14deg) brightness(1.1)' },
                    { id: 'black',     filter: 'brightness(0.28) contrast(1.25) saturate(0.10)' },
                    { id: 'marble',    filter: 'contrast(1.5) hue-rotate(8deg) saturate(0.72)' }],
+    arapaima:     [{ id: 'natural',   filter: '' },
+                   { id: 'gold',      filter: 'sepia(0.6) saturate(2.5) hue-rotate(20deg) brightness(1.1)' },
+                   { id: 'juvenile',  filter: 'hue-rotate(30deg) saturate(1.3) brightness(1.05) contrast(1.1)' }],
+    germanram:    [{ id: 'natural',   filter: '' },
+                   { id: 'electric',  filter: 'hue-rotate(195deg) saturate(2.2) brightness(1.05)' },
+                   { id: 'gold',      filter: 'sepia(0.5) saturate(2.8) hue-rotate(15deg) brightness(1.1)' }],
+    iridescentshark: [
+                   { id: 'natural',   filter: '' },
+                   { id: 'juvenile',  filter: 'hue-rotate(210deg) saturate(1.6) brightness(1.1) contrast(1.05)' },
+                   { id: 'albino',    filter: 'sepia(0.18) brightness(1.65) saturate(0.32)' }],
   };
 
   const SPECIES_ZONE = {
@@ -281,6 +294,9 @@
     diamondstingray: { yMin: 0.84, yMax: 0.97 },
     cherrybarb:      { yMin: 0.12, yMax: 0.68 },
     angelfish:       { yMin: 0.18, yMax: 0.78 },
+    arapaima:        { yMin: 0.05, yMax: 0.45 },
+    germanram:       { yMin: 0.50, yMax: 0.90 },
+    iridescentshark: { yMin: 0.15, yMax: 0.75 },
   };
 
   const SPECIES_SPEED = {
@@ -290,6 +306,7 @@
     rtcatfish: 14, pleco: 6,
     tilapia: 24, indonesiantiger: 32, electricblueram: 18,
     diamondstingray: 10, cherrybarb: 38, angelfish: 16,
+    arapaima: 50, germanram: 16, iridescentshark: 42,
   };
 
   const SPECIES_MID_AMP = {
@@ -299,6 +316,7 @@
     rtcatfish: 0.08, pleco: 0.03,
     tilapia: 0.07, indonesiantiger: 0.09, electricblueram: 0.08,
     diamondstingray: 0.02, cherrybarb: 0.10, angelfish: 0.05,
+    arapaima: 0.06, germanram: 0.08, iridescentshark: 0.09,
   };
 
   const HUNGER_DECAY = {
@@ -307,15 +325,16 @@
     peacockbass: 0.012, knifefish: 0.009, silverdollar: 0.010,
     tilapia: 0.012, indonesiantiger: 0.011, electricblueram: 0.014,
     diamondstingray: 0.008, cherrybarb: 0.015, angelfish: 0.010,
+    arapaima: 0.009, germanram: 0.013, iridescentshark: 0.011,
   };
 
   // True schooling fish - Boids (separation + alignment + cohesion) during wander.
-  const SCHOOLING_SPECIES = new Set(['cherrybarb', 'silverdollar']);
+  const SCHOOLING_SPECIES = new Set(['cherrybarb', 'silverdollar', 'iridescentshark']);
   // Territorial cichlids - slowly patrol a home zone rather than wandering freely.
-  const TERRITORIAL_SPECIES = new Set(['oscar', 'flowerhorn', 'peacockbass', 'electricblueram']);
+  const TERRITORIAL_SPECIES = new Set(['oscar', 'flowerhorn', 'peacockbass', 'electricblueram', 'germanram']);
   // Predator/prey for mock-chase behavior (purely cosmetic - prey never gets eaten).
-  const PREDATOR_SPECIES = new Set(['arowana', 'alligatorgar', 'snakehead', 'indonesiantiger']);
-  const PREY_SPECIES     = new Set(['cherrybarb', 'electricblueram']);
+  const PREDATOR_SPECIES = new Set(['arowana', 'alligatorgar', 'snakehead', 'indonesiantiger', 'arapaima']);
+  const PREY_SPECIES     = new Set(['cherrybarb', 'electricblueram', 'germanram']);
   const CHASE_RADIUS = 280; // px - predator notices prey within this range
   const FLEE_RADIUS  = 220; // px - prey detects and flees from predator
 
@@ -336,6 +355,9 @@
     diamondstingray: ['shrimp', 'superworm'],
     cherrybarb:   ['pellet', 'cricket'],
     angelfish:    ['shrimp', 'pellet'],
+    arapaima:     ['cricket', 'shrimp'],
+    germanram:    ['pellet', 'shrimp'],
+    iridescentshark: ['pellet', 'cricket'],
   };
 
   const SPECIES_LABEL = {
@@ -346,6 +368,7 @@
     tilapia: 'Tilapia', indonesiantiger: 'Indonesian Tiger Fish',
     electricblueram: 'Electric Blue Ram', diamondstingray: 'Diamond Stingray',
     cherrybarb: 'Cherry Barb', angelfish: 'Angelfish',
+    arapaima: 'Arapaima', germanram: 'German Ram', iridescentshark: 'Iridescent Shark',
   };
 
   // ---------- Resize ----------
