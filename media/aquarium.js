@@ -624,7 +624,7 @@
       }
 
       // ---- Schooling: cherrybarb, silverdollar (Boids) ----
-      // Only during wander (not chasing food). O(n) per fish, n ≤ 10, safe at 30fps.
+      // Only during wander (not chasing food). O(n) per fish, n ≤ 20, safe at 30fps.
       if (SCHOOLING_SPECIES.has(f.species) && !f.target) {
         let sepX = 0, sepY = 0, sepN = 0;
         let sumVx = 0, sumVy = 0, sumX = 0, sumY = 0, nbN = 0;
@@ -1825,7 +1825,7 @@
     }
   });
 
-  const MAX_FISH = 10;
+  const MAX_FISH = 20;
 
   spawnPanel.querySelectorAll('.spawn-variants button').forEach(btn => {
     btn.addEventListener('click', () => {
