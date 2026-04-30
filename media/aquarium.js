@@ -1980,4 +1980,40 @@
     vscode.postMessage({ type: 'ready' });
     requestAnimationFrame((t) => { lastTime = t; lastRender = t; loop(t); });
   });
+
+  // ---------- Rating toast ----------
+  (function initRatingToast() {
+    const NOSHOW_KEY = 'vscaquarium_noshow';
+    const SNOOZE_KEY = 'vscaquarium_snooze';
+    const DELAY_MS   = 45_000;
+    const SNOOZE_MS  = 14 * 24 * 60 * 60 * 1000;
+    const MARKET_URL = 'https://marketplace.visualstudio.com/items?itemName=jeffreybulanadi.vscodeaquarium&ssr=false#review-details';
+
+    try {
+      if (localStorage.getItem(NOSHOW_KEY)) { return; }
+      const snooze = parseInt(localStorage.getItem(SNOOZE_KEY) || '0', 10);
+      if (snooze && Date.now() < snooze) { return; }
+    } catch { /* storage unavailable */ }
+
+    const toast    = document.getElementById('ratingToast');
+    const rateBtn  = document.getElementById('ratingRate');
+    const dismissBtn = document.getElementById('ratingDismiss');
+    if (!toast || !rateBtn || !dismissBtn) { return; }
+
+    function hideToast(permanent) {
+      toast.classList.remove('visible');
+      try {
+        if (permanent) { localStorage.setItem(NOSHOW_KEY, '1'); }
+        else           { localStorage.setItem(SNOOZE_KEY, String(Date.now() + SNOOZE_MS)); }
+      } catch { /* storage unavailable */ }
+    }
+
+    rateBtn.addEventListener('click', () => {
+      vscode.postMessage({ type: 'openExternal', url: MARKET_URL });
+      hideToast(true);
+    });
+    dismissBtn.addEventListener('click', () => hideToast(false));
+
+    setTimeout(() => toast.classList.add('visible'), DELAY_MS);
+  }());
 })();

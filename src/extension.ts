@@ -10,7 +10,7 @@ interface FishEntry {
 }
 
 type WebviewMessageType =
-    | 'ready' | 'spawnFish' | 'resetFish' | 'gameUpdate' | 'fishDied' | 'achievement';
+    | 'ready' | 'spawnFish' | 'resetFish' | 'gameUpdate' | 'fishDied' | 'achievement' | 'openExternal';
 
 interface WebviewMessage {
     readonly type: WebviewMessageType;
@@ -20,6 +20,7 @@ interface WebviewMessage {
     readonly coins?: number;
     readonly fishCount?: number;
     readonly text?: string;
+    readonly url?: string;
 }
 
 // ---- Constants ---------------------------------------------------
@@ -256,6 +257,11 @@ function handleWebviewMessage(msg: WebviewMessage, context: vscode.ExtensionCont
         }
         case 'achievement':
             vscode.window.showInformationMessage(`Achievement: ${msg.text ?? ''}`);
+            break;
+        case 'openExternal':
+            if (msg.url) {
+                vscode.env.openExternal(vscode.Uri.parse(msg.url));
+            }
             break;
     }
 }

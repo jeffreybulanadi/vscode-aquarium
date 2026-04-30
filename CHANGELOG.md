@@ -7,6 +7,7 @@ All notable changes to VSCode Aquarium are documented in this file.
 ### Added
 - **5 new Fancy Goldfish species** - Calico Oranda, Calico Ranchu, Cow Ranchu, Lionhead Oranda, Redcap Oranda; each with 3 color variants and accurate swim physics (slow, round-body wag, mid-lower tank zone)
 - **Fancy Goldfish spawn category** - new section in the spawn panel grouping all 5 goldfish variants together
+- **Rating toast** - subtle slide-up prompt after 45 seconds asking users to rate on the marketplace; "Maybe later" snoozes for 14 days, "Rate it" opens the marketplace and never shows again
 - All goldfish species join the schooling set, swimming in loose social groups
 
 ## [1.5.5] - 2026-04-29
