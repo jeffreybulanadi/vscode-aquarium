@@ -1,4 +1,4 @@
-﻿(function () {
+(function () {
   'use strict';
   const vscode = acquireVsCodeApi();
   const canvas = document.getElementById('aquarium');
@@ -48,6 +48,8 @@
   const bubbles = [];
   const plants = [];
   const pellets = [];
+  /** Mirrors the pellets array as a Set for O(1) membership checks per fish per frame. */
+  const pelletSet = new Set();
   const waste = [];          // { x, oy, size, alpha } - uneaten food debris on gravel
   let lastTime = performance.now();
 
@@ -475,6 +477,29 @@
       dead: false,
       deathTimer: 0,
       renderDir: dir0,   // smooth direction - lerps when fish turns
+      // Predator behavior state (used by PREDATOR_SPECIES)
+      chaseCooldown:    10 + Math.random() * 15,
+      chaseTarget:      null,
+      chaseDuration:    0,
+      chaseBurstTimer:  0.8 + Math.random() * 1.0,
+      chaseBursting:    false,
+      chaseBurstRemain: 0,
+      // Prey flee state (used by PREY_SPECIES)
+      fleeBurstTimer:   0.5 + Math.random() * 0.8,
+      fleeBursting:     false,
+      fleeBurstRemain:  0,
+      // Arowana surface breach
+      breaching:   false,
+      breachTimer: 0,
+      // Arowana horizontal burst
+      burstTimer:  25 + Math.random() * 20,
+      bursting:    false,
+      burstRemain: 0,
+      // Pleco substrate parking
+      parkTimer: 2 + Math.random() * 4,
+      parked:    false,
+      // Territorial home zone - set to actual position on first update frame
+      territory: null,
     };
   }
 
@@ -521,10 +546,10 @@
           waste.push({ x: p.x + (Math.random() - 0.5) * 8, oy: Math.random() * 5, size: 1 + Math.random() * 2, alpha: 0.65 });
         }
         p.restLife -= dt;
-        if (p.restLife <= 0) pellets.splice(i, 1);
+        if (p.restLife <= 0) { pellets.splice(i, 1); pelletSet.delete(p); }
       } else {
         p.life -= dt;
-        if (p.life <= 0) pellets.splice(i, 1);
+        if (p.life <= 0) { pellets.splice(i, 1); pelletSet.delete(p); }
       }
     }
 
@@ -567,7 +592,7 @@
       f.tailPhase += dt * (4 + Math.abs(f.vx) * 0.06);
 
       // Invalidate target if pellet was eaten by another fish; release claim and scatter immediately
-      if (f.target && !pellets.includes(f.target)) {
+      if (f.target && !pelletSet.has(f.target)) {
         f.target.claimedBy = null;
         f.target = null; f.mood = 'wander';
         f.changeIn = 0;  // pick a new targetY right away so fish don't stay glued to the food spot
@@ -604,7 +629,9 @@
           f.growthScale = Math.min(1.5, f.growthScale + 0.003);
           coins += coinEarn;
           coinsLabel.innerHTML = `<i class="fa-solid fa-coins"></i> ${coins}`;
-          pellets.splice(pellets.indexOf(f.target), 1);
+          const eatIdx = pellets.indexOf(f.target);
+          if (eatIdx !== -1) { pellets.splice(eatIdx, 1); }
+          pelletSet.delete(f.target);
           f.target = null;
           f.mood = 'wander';
           f.changeIn = 0;  // force immediate new wandering targetY so fish scatter from eating spot
@@ -690,7 +717,6 @@
       // Quick speed dash (~every 30-50s) - separate from breach; mimics striking at prey.
       // Disabled during breach and when actively chasing prey.
       if (f.species === 'arowana' && !f.target && !f.breaching && !f.chaseTarget) {
-        if (f.burstTimer === undefined) f.burstTimer = 0;
         f.burstTimer -= dt;
         if (!f.bursting && f.burstTimer <= 0 && Math.random() < dt * 0.025) {
           f.bursting = true; f.burstRemain = 0.55;
@@ -707,7 +733,6 @@
       // Occasionally locks onto a small prey fish and charges toward it.
       // Purely cosmetic - predator never actually eats the prey fish.
       if (PREDATOR_SPECIES.has(f.species) && !f.target) {
-        if (f.chaseCooldown === undefined) f.chaseCooldown = 10 + Math.random() * 15;
         f.chaseCooldown -= dt;
         // Validate existing chase target (clear if prey died, removed, or duration expired)
         if (f.chaseTarget && (f.chaseTarget.dead || !fish.includes(f.chaseTarget) || f.chaseDuration <= 0)) {
@@ -743,7 +768,6 @@
             // Prey escaped - give up; clear burst so next chase starts clean
             f.chaseTarget = null; f.chaseBursting = false; f.chaseCooldown = 15 + Math.random() * 15;
           } else {
-            if (f.chaseBurstTimer === undefined) f.chaseBurstTimer = 1.0 + Math.random() * 1.0;
             f.chaseBurstTimer -= dt;
             if (f.chaseBurstTimer <= 0) {
               f.chaseBursting    = true;
@@ -778,7 +802,6 @@
         }
         if (minPredD < FLEE_RADIUS) {
           // Burst timer only decrements while actually fleeing so each chase gets fresh cycle.
-          if (f.fleeBurstTimer === undefined) f.fleeBurstTimer = 0.5 + Math.random() * 0.8;
           f.fleeBurstTimer -= dt;
           if (f.fleeBurstTimer <= 0) {
             f.fleeBursting    = true;
@@ -802,7 +825,6 @@
       // ---- Pleco substrate parking ----
       // Occasionally parks motionless on the bottom (simulates sucker-mouth resting).
       if (f.species === 'pleco' && !f.target) {
-        if (f.parkTimer === undefined) f.parkTimer = 0;
         f.parkTimer -= dt;
         if (f.parkTimer <= 0) {
           f.parked    = Math.random() < 0.3;
@@ -1772,7 +1794,7 @@
     const MAX_PELLETS = 18;
     const toAdd = Math.min(count, Math.max(0, MAX_PELLETS - pellets.length));
     for (let i = 0; i < toAdd; i++) {
-      pellets.push({
+      const pellet = {
         x: x + (Math.random() - 0.5) * 50,
         y: y + (Math.random() - 0.5) * 10,
         vy: 8 + Math.random() * 10,
@@ -1780,7 +1802,9 @@
         type: foodType,
         angle: Math.random() * Math.PI * 2,
         wiggle: Math.random() * Math.PI * 2,
-      });
+      };
+      pellets.push(pellet);
+      pelletSet.add(pellet);
     }
   }
 

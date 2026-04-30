@@ -6,7 +6,11 @@
     "lib": ["ES2020"],
     "sourceMap": true,
     "rootDir": "src",
-    "strict": true
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noImplicitReturns": true,
+    "forceConsistentCasingInFileNames": true
   },
   "exclude": ["node_modules", ".vscode-test"]
 }
