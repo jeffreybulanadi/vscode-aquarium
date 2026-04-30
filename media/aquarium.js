@@ -211,6 +211,11 @@
     arapaima:        { sheet: 'arapaima',        fx: 0, fy: 0, fw: 1, fh: 1, targetH: 180, facesLeft: true,  tailRatio: 0.20 },
     germanram:       { sheet: 'germanram',       fx: 0, fy: 0, fw: 1, fh: 1, targetH: 50,  facesLeft: false, tailRatio: 0.20 },
     iridescentshark: { sheet: 'iridescentshark', fx: 0, fy: 0, fw: 1, fh: 1, targetH: 96,  facesLeft: true,  tailRatio: 0.26 },
+    calicooranda:    { sheet: 'calicooranda',    fx: 0, fy: 0, fw: 1, fh: 1, targetH: 74,  facesLeft: true,  tailRatio: 0.28 },
+    calicoranchu:    { sheet: 'calicoranchu',    fx: 0, fy: 0, fw: 1, fh: 1, targetH: 68,  facesLeft: true,  tailRatio: 0.30 },
+    cowranchu:       { sheet: 'cowranchu',       fx: 0, fy: 0, fw: 1, fh: 1, targetH: 70,  facesLeft: true,  tailRatio: 0.30 },
+    lionheadoranda:  { sheet: 'lionheadoranda',  fx: 0, fy: 0, fw: 1, fh: 1, targetH: 72,  facesLeft: true,  tailRatio: 0.30 },
+    redcaporanda:    { sheet: 'redcaporanda',    fx: 0, fy: 0, fw: 1, fh: 1, targetH: 74,  facesLeft: true,  tailRatio: 0.28 },
   };
 
   const SPECIES_COLOR_VARIANTS = {
@@ -277,6 +282,21 @@
                    { id: 'natural',   filter: '' },
                    { id: 'juvenile',  filter: 'hue-rotate(210deg) saturate(1.6) brightness(1.1) contrast(1.05)' },
                    { id: 'albino',    filter: 'sepia(0.18) brightness(1.65) saturate(0.32)' }],
+    calicooranda:  [{ id: 'calico',   filter: '' },
+                   { id: 'red',       filter: 'hue-rotate(-10deg) saturate(2.0) brightness(1.05)' },
+                   { id: 'blue',      filter: 'hue-rotate(190deg) saturate(1.4) brightness(0.85)' }],
+    calicoranchu:  [{ id: 'calico',   filter: '' },
+                   { id: 'red',       filter: 'hue-rotate(-15deg) saturate(2.2) brightness(1.05)' },
+                   { id: 'blue',      filter: 'hue-rotate(185deg) saturate(1.5) brightness(0.80)' }],
+    cowranchu:     [{ id: 'tri',      filter: '' },
+                   { id: 'red',       filter: 'hue-rotate(-5deg) saturate(1.8) brightness(1.08)' },
+                   { id: 'albino',    filter: 'sepia(0.2) brightness(1.5) saturate(0.3)' }],
+    lionheadoranda:[{ id: 'natural',  filter: '' },
+                   { id: 'gold',      filter: 'sepia(0.5) saturate(2.5) hue-rotate(18deg) brightness(1.1)' },
+                   { id: 'blue',      filter: 'hue-rotate(185deg) saturate(1.4) brightness(0.88)' }],
+    redcaporanda:  [{ id: 'redcap',   filter: '' },
+                   { id: 'red',       filter: 'hue-rotate(-5deg) saturate(1.8) brightness(1.0)' },
+                   { id: 'gold',      filter: 'sepia(0.4) saturate(2.2) hue-rotate(20deg) brightness(1.1)' }],
   };
 
   const SPECIES_ZONE = {
@@ -299,6 +319,11 @@
     arapaima:        { yMin: 0.05, yMax: 0.45 },
     germanram:       { yMin: 0.50, yMax: 0.90 },
     iridescentshark: { yMin: 0.15, yMax: 0.75 },
+    calicooranda:    { yMin: 0.25, yMax: 0.82 },
+    calicoranchu:    { yMin: 0.25, yMax: 0.82 },
+    cowranchu:       { yMin: 0.25, yMax: 0.82 },
+    lionheadoranda:  { yMin: 0.25, yMax: 0.82 },
+    redcaporanda:    { yMin: 0.25, yMax: 0.82 },
   };
 
   const SPECIES_SPEED = {
@@ -309,6 +334,7 @@
     tilapia: 24, indonesiantiger: 32, electricblueram: 18,
     diamondstingray: 10, cherrybarb: 38, angelfish: 16,
     arapaima: 50, germanram: 16, iridescentshark: 42,
+    calicooranda: 13, calicoranchu: 12, cowranchu: 13, lionheadoranda: 14, redcaporanda: 13,
   };
 
   const SPECIES_MID_AMP = {
@@ -319,6 +345,7 @@
     tilapia: 0.07, indonesiantiger: 0.09, electricblueram: 0.08,
     diamondstingray: 0.02, cherrybarb: 0.10, angelfish: 0.05,
     arapaima: 0.06, germanram: 0.08, iridescentshark: 0.09,
+    calicooranda: 0.06, calicoranchu: 0.06, cowranchu: 0.06, lionheadoranda: 0.06, redcaporanda: 0.06,
   };
 
   const HUNGER_DECAY = {
@@ -328,10 +355,12 @@
     tilapia: 0.012, indonesiantiger: 0.011, electricblueram: 0.014,
     diamondstingray: 0.008, cherrybarb: 0.015, angelfish: 0.010,
     arapaima: 0.009, germanram: 0.013, iridescentshark: 0.011,
+    calicooranda: 0.013, calicoranchu: 0.012, cowranchu: 0.013, lionheadoranda: 0.012, redcaporanda: 0.013,
   };
 
-  // True schooling fish - Boids (separation + alignment + cohesion) during wander.
-  const SCHOOLING_SPECIES = new Set(['cherrybarb', 'silverdollar', 'iridescentshark']);
+    // True schooling fish - Boids (separation + alignment + cohesion) during wander.
+  const SCHOOLING_SPECIES = new Set(['cherrybarb', 'silverdollar', 'iridescentshark',
+    'calicooranda', 'calicoranchu', 'cowranchu', 'lionheadoranda', 'redcaporanda']);
   // Territorial cichlids - slowly patrol a home zone rather than wandering freely.
   const TERRITORIAL_SPECIES = new Set(['oscar', 'flowerhorn', 'peacockbass', 'electricblueram', 'germanram']);
   // Predator/prey for mock-chase behavior (purely cosmetic - prey never gets eaten).
@@ -360,6 +389,11 @@
     arapaima:     ['cricket', 'shrimp'],
     germanram:    ['pellet', 'shrimp'],
     iridescentshark: ['pellet', 'cricket'],
+    calicooranda:    ['pellet', 'shrimp'],
+    calicoranchu:    ['pellet', 'shrimp'],
+    cowranchu:       ['pellet', 'shrimp'],
+    lionheadoranda:  ['pellet', 'shrimp'],
+    redcaporanda:    ['pellet', 'shrimp'],
   };
 
   const SPECIES_LABEL = {
@@ -371,6 +405,8 @@
     electricblueram: 'Electric Blue Ram', diamondstingray: 'Diamond Stingray',
     cherrybarb: 'Cherry Barb', angelfish: 'Angelfish',
     arapaima: 'Arapaima', germanram: 'German Ram', iridescentshark: 'Iridescent Shark',
+    calicooranda: 'Calico Oranda', calicoranchu: 'Calico Ranchu', cowranchu: 'Cow Ranchu',
+    lionheadoranda: 'Lionhead Oranda', redcaporanda: 'Redcap Oranda',
   };
 
   // ---------- Resize ----------

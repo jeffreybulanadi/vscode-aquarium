@@ -29,6 +29,7 @@ const FRESHWATER_SPECIES: readonly string[] = [
     'flowerhorn', 'peacockbass', 'knifefish', 'silverdollar', 'tilapia',
     'indonesiantiger', 'electricblueram', 'diamondstingray', 'cherrybarb',
     'angelfish', 'arapaima', 'germanram', 'iridescentshark',
+    'calicooranda', 'calicoranchu', 'cowranchu', 'lionheadoranda', 'redcaporanda',
 ];
 
 const SALTWATER_SPECIES: readonly string[] = [
@@ -44,6 +45,8 @@ const SPECIES_LABELS: Readonly<Record<string, string>> = {
     electricblueram: 'Electric Blue Ram', diamondstingray: 'Diamond Stingray',
     cherrybarb: 'Cherry Barb', angelfish: 'Angelfish',
     arapaima: 'Arapaima', germanram: 'German Ram', iridescentshark: 'Iridescent Shark',
+    calicooranda: 'Calico Oranda', calicoranchu: 'Calico Ranchu', cowranchu: 'Cow Ranchu',
+    lionheadoranda: 'Lionhead Oranda', redcaporanda: 'Redcap Oranda',
     clownfish: 'Clownfish', tang: 'Tang', lionfish: 'Lionfish',
     'angel-marine': 'Marine Angel', pufferfish: 'Pufferfish',
 };
@@ -68,6 +71,11 @@ const SPECIES_COLOR_VARIANTS: Readonly<Record<string, readonly string[]>> = {
     arapaima:        ['natural', 'gold', 'juvenile'],
     germanram:       ['natural', 'female', 'gold'],
     iridescentshark: ['natural', 'juvenile', 'albino'],
+    calicooranda:    ['calico', 'red', 'blue'],
+    calicoranchu:    ['calico', 'red', 'blue'],
+    cowranchu:       ['tri', 'red', 'albino'],
+    lionheadoranda:  ['natural', 'gold', 'blue'],
+    redcaporanda:    ['redcap', 'red', 'gold'],
 };
 
 /** Maps HTML template placeholder key to filename inside media/fish/. */
@@ -91,6 +99,11 @@ const FISH_IMAGE_FILES: Readonly<Record<string, string>> = {
     arapaimaUri:        'arapaima.jpg',
     germanramUri:       'german-ram.jpg',
     iridescentsharkUri: 'iridescent-shark.jpg',
+    calicoOrandaUri:    'calico-oranda.jpg',
+    calicoRanchuUri:    'calico-ranchu.jpg',
+    cowRanchuUri:       'cow-ranchu.jpg',
+    lionheadOrandaUri:  'lionhead-oranda.jpg',
+    redcapOrandaUri:    'redcap-oranda.jpg',
 };
 
 // ---- Module state ------------------------------------------------
