@@ -1,4 +1,4 @@
-﻿(function () {
+(function () {
   'use strict';
   const vscode = acquireVsCodeApi();
   const canvas = document.getElementById('aquarium');
@@ -48,6 +48,8 @@
   const bubbles = [];
   const plants = [];
   const pellets = [];
+  /** Mirrors the pellets array as a Set for O(1) membership checks per fish per frame. */
+  const pelletSet = new Set();
   const waste = [];          // { x, oy, size, alpha } - uneaten food debris on gravel
   let lastTime = performance.now();
 
@@ -209,6 +211,11 @@
     arapaima:        { sheet: 'arapaima',        fx: 0, fy: 0, fw: 1, fh: 1, targetH: 180, facesLeft: true,  tailRatio: 0.20 },
     germanram:       { sheet: 'germanram',       fx: 0, fy: 0, fw: 1, fh: 1, targetH: 50,  facesLeft: false, tailRatio: 0.20 },
     iridescentshark: { sheet: 'iridescentshark', fx: 0, fy: 0, fw: 1, fh: 1, targetH: 96,  facesLeft: true,  tailRatio: 0.26 },
+    calicooranda:    { sheet: 'calicooranda',    fx: 0, fy: 0, fw: 1, fh: 1, targetH: 74,  facesLeft: true,  tailRatio: 0.28 },
+    calicoranchu:    { sheet: 'calicoranchu',    fx: 0, fy: 0, fw: 1, fh: 1, targetH: 68,  facesLeft: true,  tailRatio: 0.30 },
+    cowranchu:       { sheet: 'cowranchu',       fx: 0, fy: 0, fw: 1, fh: 1, targetH: 70,  facesLeft: true,  tailRatio: 0.30 },
+    lionheadoranda:  { sheet: 'lionheadoranda',  fx: 0, fy: 0, fw: 1, fh: 1, targetH: 72,  facesLeft: true,  tailRatio: 0.30 },
+    redcaporanda:    { sheet: 'redcaporanda',    fx: 0, fy: 0, fw: 1, fh: 1, targetH: 74,  facesLeft: true,  tailRatio: 0.28 },
   };
 
   const SPECIES_COLOR_VARIANTS = {
@@ -275,6 +282,21 @@
                    { id: 'natural',   filter: '' },
                    { id: 'juvenile',  filter: 'hue-rotate(210deg) saturate(1.6) brightness(1.1) contrast(1.05)' },
                    { id: 'albino',    filter: 'sepia(0.18) brightness(1.65) saturate(0.32)' }],
+    calicooranda:  [{ id: 'calico',   filter: '' },
+                   { id: 'red',       filter: 'hue-rotate(-10deg) saturate(2.0) brightness(1.05)' },
+                   { id: 'blue',      filter: 'hue-rotate(190deg) saturate(1.4) brightness(0.85)' }],
+    calicoranchu:  [{ id: 'calico',   filter: '' },
+                   { id: 'red',       filter: 'hue-rotate(-15deg) saturate(2.2) brightness(1.05)' },
+                   { id: 'blue',      filter: 'hue-rotate(185deg) saturate(1.5) brightness(0.80)' }],
+    cowranchu:     [{ id: 'tri',      filter: '' },
+                   { id: 'red',       filter: 'hue-rotate(-5deg) saturate(1.8) brightness(1.08)' },
+                   { id: 'albino',    filter: 'sepia(0.2) brightness(1.5) saturate(0.3)' }],
+    lionheadoranda:[{ id: 'natural',  filter: '' },
+                   { id: 'gold',      filter: 'sepia(0.5) saturate(2.5) hue-rotate(18deg) brightness(1.1)' },
+                   { id: 'blue',      filter: 'hue-rotate(185deg) saturate(1.4) brightness(0.88)' }],
+    redcaporanda:  [{ id: 'redcap',   filter: '' },
+                   { id: 'red',       filter: 'hue-rotate(-5deg) saturate(1.8) brightness(1.0)' },
+                   { id: 'gold',      filter: 'sepia(0.4) saturate(2.2) hue-rotate(20deg) brightness(1.1)' }],
   };
 
   const SPECIES_ZONE = {
@@ -297,6 +319,11 @@
     arapaima:        { yMin: 0.05, yMax: 0.45 },
     germanram:       { yMin: 0.50, yMax: 0.90 },
     iridescentshark: { yMin: 0.15, yMax: 0.75 },
+    calicooranda:    { yMin: 0.25, yMax: 0.82 },
+    calicoranchu:    { yMin: 0.25, yMax: 0.82 },
+    cowranchu:       { yMin: 0.25, yMax: 0.82 },
+    lionheadoranda:  { yMin: 0.25, yMax: 0.82 },
+    redcaporanda:    { yMin: 0.25, yMax: 0.82 },
   };
 
   const SPECIES_SPEED = {
@@ -307,6 +334,7 @@
     tilapia: 24, indonesiantiger: 32, electricblueram: 18,
     diamondstingray: 10, cherrybarb: 38, angelfish: 16,
     arapaima: 50, germanram: 16, iridescentshark: 42,
+    calicooranda: 13, calicoranchu: 12, cowranchu: 13, lionheadoranda: 14, redcaporanda: 13,
   };
 
   const SPECIES_MID_AMP = {
@@ -317,6 +345,7 @@
     tilapia: 0.07, indonesiantiger: 0.09, electricblueram: 0.08,
     diamondstingray: 0.02, cherrybarb: 0.10, angelfish: 0.05,
     arapaima: 0.06, germanram: 0.08, iridescentshark: 0.09,
+    calicooranda: 0.06, calicoranchu: 0.06, cowranchu: 0.06, lionheadoranda: 0.06, redcaporanda: 0.06,
   };
 
   const HUNGER_DECAY = {
@@ -326,10 +355,12 @@
     tilapia: 0.012, indonesiantiger: 0.011, electricblueram: 0.014,
     diamondstingray: 0.008, cherrybarb: 0.015, angelfish: 0.010,
     arapaima: 0.009, germanram: 0.013, iridescentshark: 0.011,
+    calicooranda: 0.013, calicoranchu: 0.012, cowranchu: 0.013, lionheadoranda: 0.012, redcaporanda: 0.013,
   };
 
-  // True schooling fish - Boids (separation + alignment + cohesion) during wander.
-  const SCHOOLING_SPECIES = new Set(['cherrybarb', 'silverdollar', 'iridescentshark']);
+    // True schooling fish - Boids (separation + alignment + cohesion) during wander.
+  const SCHOOLING_SPECIES = new Set(['cherrybarb', 'silverdollar', 'iridescentshark',
+    'calicooranda', 'calicoranchu', 'cowranchu', 'lionheadoranda', 'redcaporanda']);
   // Territorial cichlids - slowly patrol a home zone rather than wandering freely.
   const TERRITORIAL_SPECIES = new Set(['oscar', 'flowerhorn', 'peacockbass', 'electricblueram', 'germanram']);
   // Predator/prey for mock-chase behavior (purely cosmetic - prey never gets eaten).
@@ -358,6 +389,11 @@
     arapaima:     ['cricket', 'shrimp'],
     germanram:    ['pellet', 'shrimp'],
     iridescentshark: ['pellet', 'cricket'],
+    calicooranda:    ['pellet', 'shrimp'],
+    calicoranchu:    ['pellet', 'shrimp'],
+    cowranchu:       ['pellet', 'shrimp'],
+    lionheadoranda:  ['pellet', 'shrimp'],
+    redcaporanda:    ['pellet', 'shrimp'],
   };
 
   const SPECIES_LABEL = {
@@ -369,6 +405,8 @@
     electricblueram: 'Electric Blue Ram', diamondstingray: 'Diamond Stingray',
     cherrybarb: 'Cherry Barb', angelfish: 'Angelfish',
     arapaima: 'Arapaima', germanram: 'German Ram', iridescentshark: 'Iridescent Shark',
+    calicooranda: 'Calico Oranda', calicoranchu: 'Calico Ranchu', cowranchu: 'Cow Ranchu',
+    lionheadoranda: 'Lionhead Oranda', redcaporanda: 'Redcap Oranda',
   };
 
   // ---------- Resize ----------
@@ -475,6 +513,29 @@
       dead: false,
       deathTimer: 0,
       renderDir: dir0,   // smooth direction - lerps when fish turns
+      // Predator behavior state (used by PREDATOR_SPECIES)
+      chaseCooldown:    10 + Math.random() * 15,
+      chaseTarget:      null,
+      chaseDuration:    0,
+      chaseBurstTimer:  0.8 + Math.random() * 1.0,
+      chaseBursting:    false,
+      chaseBurstRemain: 0,
+      // Prey flee state (used by PREY_SPECIES)
+      fleeBurstTimer:   0.5 + Math.random() * 0.8,
+      fleeBursting:     false,
+      fleeBurstRemain:  0,
+      // Arowana surface breach
+      breaching:   false,
+      breachTimer: 0,
+      // Arowana horizontal burst
+      burstTimer:  25 + Math.random() * 20,
+      bursting:    false,
+      burstRemain: 0,
+      // Pleco substrate parking
+      parkTimer: 2 + Math.random() * 4,
+      parked:    false,
+      // Territorial home zone - set to actual position on first update frame
+      territory: null,
     };
   }
 
@@ -521,10 +582,10 @@
           waste.push({ x: p.x + (Math.random() - 0.5) * 8, oy: Math.random() * 5, size: 1 + Math.random() * 2, alpha: 0.65 });
         }
         p.restLife -= dt;
-        if (p.restLife <= 0) pellets.splice(i, 1);
+        if (p.restLife <= 0) { pellets.splice(i, 1); pelletSet.delete(p); }
       } else {
         p.life -= dt;
-        if (p.life <= 0) pellets.splice(i, 1);
+        if (p.life <= 0) { pellets.splice(i, 1); pelletSet.delete(p); }
       }
     }
 
@@ -567,7 +628,7 @@
       f.tailPhase += dt * (4 + Math.abs(f.vx) * 0.06);
 
       // Invalidate target if pellet was eaten by another fish; release claim and scatter immediately
-      if (f.target && !pellets.includes(f.target)) {
+      if (f.target && !pelletSet.has(f.target)) {
         f.target.claimedBy = null;
         f.target = null; f.mood = 'wander';
         f.changeIn = 0;  // pick a new targetY right away so fish don't stay glued to the food spot
@@ -604,7 +665,9 @@
           f.growthScale = Math.min(1.5, f.growthScale + 0.003);
           coins += coinEarn;
           coinsLabel.innerHTML = `<i class="fa-solid fa-coins"></i> ${coins}`;
-          pellets.splice(pellets.indexOf(f.target), 1);
+          const eatIdx = pellets.indexOf(f.target);
+          if (eatIdx !== -1) { pellets.splice(eatIdx, 1); }
+          pelletSet.delete(f.target);
           f.target = null;
           f.mood = 'wander';
           f.changeIn = 0;  // force immediate new wandering targetY so fish scatter from eating spot
@@ -690,7 +753,6 @@
       // Quick speed dash (~every 30-50s) - separate from breach; mimics striking at prey.
       // Disabled during breach and when actively chasing prey.
       if (f.species === 'arowana' && !f.target && !f.breaching && !f.chaseTarget) {
-        if (f.burstTimer === undefined) f.burstTimer = 0;
         f.burstTimer -= dt;
         if (!f.bursting && f.burstTimer <= 0 && Math.random() < dt * 0.025) {
           f.bursting = true; f.burstRemain = 0.55;
@@ -707,7 +769,6 @@
       // Occasionally locks onto a small prey fish and charges toward it.
       // Purely cosmetic - predator never actually eats the prey fish.
       if (PREDATOR_SPECIES.has(f.species) && !f.target) {
-        if (f.chaseCooldown === undefined) f.chaseCooldown = 10 + Math.random() * 15;
         f.chaseCooldown -= dt;
         // Validate existing chase target (clear if prey died, removed, or duration expired)
         if (f.chaseTarget && (f.chaseTarget.dead || !fish.includes(f.chaseTarget) || f.chaseDuration <= 0)) {
@@ -743,7 +804,6 @@
             // Prey escaped - give up; clear burst so next chase starts clean
             f.chaseTarget = null; f.chaseBursting = false; f.chaseCooldown = 15 + Math.random() * 15;
           } else {
-            if (f.chaseBurstTimer === undefined) f.chaseBurstTimer = 1.0 + Math.random() * 1.0;
             f.chaseBurstTimer -= dt;
             if (f.chaseBurstTimer <= 0) {
               f.chaseBursting    = true;
@@ -778,7 +838,6 @@
         }
         if (minPredD < FLEE_RADIUS) {
           // Burst timer only decrements while actually fleeing so each chase gets fresh cycle.
-          if (f.fleeBurstTimer === undefined) f.fleeBurstTimer = 0.5 + Math.random() * 0.8;
           f.fleeBurstTimer -= dt;
           if (f.fleeBurstTimer <= 0) {
             f.fleeBursting    = true;
@@ -802,7 +861,6 @@
       // ---- Pleco substrate parking ----
       // Occasionally parks motionless on the bottom (simulates sucker-mouth resting).
       if (f.species === 'pleco' && !f.target) {
-        if (f.parkTimer === undefined) f.parkTimer = 0;
         f.parkTimer -= dt;
         if (f.parkTimer <= 0) {
           f.parked    = Math.random() < 0.3;
@@ -1772,7 +1830,7 @@
     const MAX_PELLETS = 18;
     const toAdd = Math.min(count, Math.max(0, MAX_PELLETS - pellets.length));
     for (let i = 0; i < toAdd; i++) {
-      pellets.push({
+      const pellet = {
         x: x + (Math.random() - 0.5) * 50,
         y: y + (Math.random() - 0.5) * 10,
         vy: 8 + Math.random() * 10,
@@ -1780,7 +1838,9 @@
         type: foodType,
         angle: Math.random() * Math.PI * 2,
         wiggle: Math.random() * Math.PI * 2,
-      });
+      };
+      pellets.push(pellet);
+      pelletSet.add(pellet);
     }
   }
 
@@ -1920,4 +1980,40 @@
     vscode.postMessage({ type: 'ready' });
     requestAnimationFrame((t) => { lastTime = t; lastRender = t; loop(t); });
   });
+
+  // ---------- Rating toast ----------
+  (function initRatingToast() {
+    const NOSHOW_KEY = 'vscaquarium_noshow';
+    const SNOOZE_KEY = 'vscaquarium_snooze';
+    const DELAY_MS   = 45_000;
+    const SNOOZE_MS  = 14 * 24 * 60 * 60 * 1000;
+    const MARKET_URL = 'https://marketplace.visualstudio.com/items?itemName=jeffreybulanadi.vscodeaquarium&ssr=false#review-details';
+
+    try {
+      if (localStorage.getItem(NOSHOW_KEY)) { return; }
+      const snooze = parseInt(localStorage.getItem(SNOOZE_KEY) || '0', 10);
+      if (snooze && Date.now() < snooze) { return; }
+    } catch { /* storage unavailable */ }
+
+    const toast    = document.getElementById('ratingToast');
+    const rateBtn  = document.getElementById('ratingRate');
+    const dismissBtn = document.getElementById('ratingDismiss');
+    if (!toast || !rateBtn || !dismissBtn) { return; }
+
+    function hideToast(permanent) {
+      toast.classList.remove('visible');
+      try {
+        if (permanent) { localStorage.setItem(NOSHOW_KEY, '1'); }
+        else           { localStorage.setItem(SNOOZE_KEY, String(Date.now() + SNOOZE_MS)); }
+      } catch { /* storage unavailable */ }
+    }
+
+    rateBtn.addEventListener('click', () => {
+      vscode.postMessage({ type: 'openExternal', url: MARKET_URL });
+      hideToast(true);
+    });
+    dismissBtn.addEventListener('click', () => hideToast(false));
+
+    setTimeout(() => toast.classList.add('visible'), DELAY_MS);
+  }());
 })();
